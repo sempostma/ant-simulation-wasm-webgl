@@ -15,6 +15,9 @@
 #include <fstream>
 #include <vector>
 
+#define ANTS 10
+#define ANTS_DATA 3
+
 void loadShader(GLuint shader, const char *filePath) {
     std::string content;
     std::ifstream fileStream(filePath, std::ios::in);
@@ -59,7 +62,8 @@ void loadShader(GLuint shader, const char *filePath) {
 }
 
 // Vertex shader
-GLint shaderPan, shaderZoom, shaderAspect;
+GLint shaderPan, shaderZoom, shaderAspect, texture1Loc;
+GLuint texture1Name;
 
 void updateShader(EventHandler& eventHandler)
 {
@@ -91,9 +95,34 @@ GLuint initShader(EventHandler& eventHandler)
     shaderPan = glGetUniformLocation(shaderProgram, "pan");
     shaderZoom = glGetUniformLocation(shaderProgram, "zoom");    
     shaderAspect = glGetUniformLocation(shaderProgram, "aspect");
+    texture1Loc = glGetUniformLocation(shaderProgram, "texture1");
     updateShader(eventHandler);
 
     return shaderProgram;
+}
+
+void initTextures(GLuint shaderProgram) {
+    float data[ANTS*ANTS_DATA];
+    for(int i = 0; i < ANTS; i++) {
+        // data[i*ANTS_DATA] = float(rand()%100)/100.0;
+        // data[i*ANTS_DATA+1] = float(rand()%100)/100.0;
+        // data[i*ANTS_DATA+2] = float(rand()%100)/100.0;
+        // data[i*ANTS_DATA+3] = 1.0f;
+        data[i*ANTS_DATA] = (float)i/(float)ANTS;
+        data[i*ANTS_DATA+1] = 1.0f - (float)i/(float)ANTS;
+        data[i*ANTS_DATA+2] = 0.0f;
+        data[i*ANTS_DATA+3] = 1.0f;
+    }
+    
+    glUniform1i(texture1Loc, 0);
+    glActiveTexture(GL_TEXTURE0);
+    glGenTextures(1, &texture1Name);
+    glBindTexture(GL_TEXTURE_2D, texture1Name);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE );
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE );
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, ANTS, 0, GL_RGBA, GL_FLOAT, data);
 }
 
 void initGeometry(GLuint shaderProgram)
@@ -102,12 +131,17 @@ void initGeometry(GLuint shaderProgram)
     GLuint vbo;
     glGenBuffers(1, &vbo);
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
+
     GLfloat vertices[] = 
     {
-        0.0f, 0.5f, 0.0f,
-        -0.5f, -0.5f, 0.0f,
-        0.5f, -0.5f, 0.0f
+        -1.0f, -1.0f, 0.0f,
+        1.0f, -1.0f, 1.0f,
+        -1.0f, 1.0f, 2.0f,
+        1.0f, -1.0f, 3.0f,
+        1.0f, 1.0f, 4.0f,
+        -1.0f, 1.0f, 5.0f
     };
+
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
     // Specify the layout of the shader vertex data (positions only, 3 floats)
@@ -122,7 +156,7 @@ void redraw(EventHandler& eventHandler)
     glClear(GL_COLOR_BUFFER_BIT);
 
     // Draw the vertex buffer
-    glDrawArrays(GL_TRIANGLES, 0, 3);
+    glDrawArrays(GL_TRIANGLES, 0, 6);
 
     // Swap front/back framebuffers
     eventHandler.swapWindow();
@@ -147,6 +181,7 @@ int main(int argc, char** argv)
     // Initialize shader and geometry
     GLuint shaderProgram = initShader(eventHandler);
     initGeometry(shaderProgram);
+    initTextures(shaderProgram);
 
     // Start the main loop
     void* mainLoopArg = &eventHandler;
