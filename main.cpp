@@ -15,8 +15,8 @@
 #include <fstream>
 #include <vector>
 
-#define ANTS 10
-#define ANTS_DATA 3
+#define ANTS 20
+#define ANTS_DATA 4
 
 void loadShader(GLuint shader, const char *filePath) {
     std::string content;

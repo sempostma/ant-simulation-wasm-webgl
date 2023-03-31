@@ -28,6 +28,6 @@ void main()
     }
   }
 
-  gl_FragColor = texture2D(texture1, texture1_coord);
+  gl_FragColor = texture2D(texture1, vec2(0.0, gl_FragCoord.y / 600.0));
   // gl_FragColor = vec4 ( color, 1.0 );
 }
