@@ -19,6 +19,7 @@ private:
     // Window
     SDL_Window* mpWindow;
     Uint32 mWindowID;
+    SDL_GLContext windowCtx;
     void windowResizeEvent(int width, int height);
     void initWindow(const char* title);
 

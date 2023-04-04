@@ -5,11 +5,14 @@
 #include <SDL.h>
 #include <SDL_opengles2.h>
 #include "events.h"
+#include <iostream>
+#include <stdio.h>
 
 // #define EVENTS_DEBUG
 
 void EventHandler::windowResizeEvent(int width, int height)
 {
+    printf("width=%i, height=%i\n", width, height);
     glViewport(0, 0, width, height);
     mCamera.setWindowSize(width, height);
 }
@@ -30,7 +33,7 @@ void EventHandler::initWindow(const char* title)
     SDL_GL_SetSwapInterval(1);
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
-    SDL_GLContext glc = SDL_GL_CreateContext(mpWindow);
+    windowCtx = SDL_GL_CreateContext(mpWindow);
 
     // Set clear color to black
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -45,7 +48,7 @@ void EventHandler::swapWindow()
 }
 
 void EventHandler::zoomEventMouse(bool mouseWheelDown, int x, int y)
-{                
+{
     float preZoomWorldX, preZoomWorldY;
     mCamera.windowToWorldCoords(mMousePositionX, mMousePositionY, preZoomWorldX, preZoomWorldY);
 
@@ -78,8 +81,8 @@ void EventHandler::zoomEventPinch (float pinchDist, float pinchX, float pinchY)
 
 void EventHandler::panEventMouse(int x, int y)
 { 
-     int deltaX = mCamera.windowSize().width / 2 + (x - mMouseButtonDownX),
-         deltaY = mCamera.windowSize().height / 2 + (y - mMouseButtonDownY);
+    int deltaX = mCamera.windowSize().width / 2 + (x - mMouseButtonDownX),
+        deltaY = mCamera.windowSize().height / 2 + (y - mMouseButtonDownY);
 
     float deviceX, deviceY;
     mCamera.windowToDeviceCoords(deltaX,  deltaY, deviceX, deviceY);
@@ -120,6 +123,9 @@ void EventHandler::processEvents()
                     && event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED)
                 {
                     int width = event.window.data1, height = event.window.data2;
+
+                    if (width == 0 || height == 0) break;
+                    
                     windowResizeEvent(width, height);
                 }
                 break;
