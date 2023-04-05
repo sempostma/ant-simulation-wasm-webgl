@@ -13,6 +13,7 @@ varying vec3 color;
 varying vec2 antsTexture_coord;
 
 uniform sampler2D antsTexture;
+uniform sampler2D pheremonesTexture;
 uniform int f_renderMode;
 
 const float speed = 10.0;
@@ -197,6 +198,6 @@ void main()
   } else if (f_renderMode == 2) {
     gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
   } else if (f_renderMode == 3) {
-    gl_FragColor = texture2D(antsTexture, vec2(gl_FragCoord.x / WINDOW_WIDTH, 0.0));
+    gl_FragColor = texture2D(pheremonesTexture, vec2(gl_FragCoord.x / WINDOW_WIDTH, gl_FragCoord.y / WINDOW_HEIGHT));
   }
 }

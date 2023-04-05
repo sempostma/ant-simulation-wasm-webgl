@@ -15,6 +15,7 @@ attribute vec4 position;
 
 varying vec3 color;
 varying vec2 antsTexture_coord;
+varying vec2 pheremonesTexture_coord;
 
 const float scale = float(SCALE);
 const float scaleDiv = 1.0 / float(SCALE);
@@ -55,6 +56,6 @@ void main()
     gl_Position.y *= aspect;
 
     color = gl_Position.xyz + vec3(0.5);
-    antsTexture_coord = position.xy;
+    pheremonesTexture_coord = position.xy;
   }
 }

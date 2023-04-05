@@ -127,7 +127,7 @@ GLuint initShader(EventHandler &eventHandler)
     shaderZoom = glGetUniformLocation(shaderProgram, "zoom");
     shaderAspect = glGetUniformLocation(shaderProgram, "aspect");
     antsTextureLoc = glGetUniformLocation(shaderProgram, "antsTexture");
-    v_antsTextureLoc = glGetUniformLocation(shaderProgram, "v_antsTextureLoc");
+    v_antsTextureLoc = glGetUniformLocation(shaderProgram, "v_antsTexture");
     pheremonesTextureLoc = glGetUniformLocation(shaderProgram, "pheremonesTexture");
     v_renderMode = glGetUniformLocation(shaderProgram, "v_renderMode");
     f_renderMode = glGetUniformLocation(shaderProgram, "f_renderMode");
@@ -221,9 +221,30 @@ void initTextures(GLuint shaderProgram, EventHandler &eventHandler)
         antsData[i * ANTS_DATA + 5] = 0;                                                             // not used
     }
 
+    // ants data texture
+    // GLubyte phereomonesData[windowSize.width * windowSize.height * 3];
+    // for (int i = 0; i < windowSize.width * windowSize.height; i++)
+    // {
+    //     phereomonesData[i * 3] = 0;                 
+    //     phereomonesData[i * 3 + 1] = 0;      
+    //     phereomonesData[i * 3 + 2] = 0;                                                          
+    // }
+
     // initialize texture uniform
     glUniform1i(antsTextureLoc, 0);
     glUniform1i(v_antsTextureLoc, 0);
+    glUniform1i(pheremonesTextureLoc, 0);
+
+    // initialize pheremones texture
+    glActiveTexture(GL_TEXTURE0);
+    glGenTextures(1, &pheremonesTextureName);
+    glBindTexture(GL_TEXTURE_2D, pheremonesTextureName);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, windowSize.width, windowSize.height, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
 
     // initialize ants texture 1 (this contains the initial state)
     glActiveTexture(GL_TEXTURE0);
@@ -259,10 +280,10 @@ void initTextures(GLuint shaderProgram, EventHandler &eventHandler)
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, antsTextureName2, 0);
     checkFramebufferStatus("ants FBO 2");
 
-    // glGenFramebuffers(1, &pheremonesFbo);
-    // glBindFramebuffer(GL_FRAMEBUFFER, pheremonesFbo);
-    // glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, antsTextureName, 0);
-    // checkFramebufferStatus("pheremonse FBO");
+    glGenFramebuffers(1, &pheremonesFbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, pheremonesFbo);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, pheremonesTextureName, 0);
+    checkFramebufferStatus("pheremones FBO");
 }
 
 GLfloat vertices[] =
@@ -326,21 +347,24 @@ void redraw(EventHandler &eventHandler)
 
     // reportAntPosition(1);
 
-    glBindFramebuffer(GL_FRAMEBUFFER, 0); // remove the frame buffer
     glViewport(0, 0, windowSize.width, windowSize.height);
 
     // write to pheremonebuffer
     glUniform1i(v_renderMode, 2);
     glUniform1i(f_renderMode, 2);
 
+    glBindFramebuffer(GL_FRAMEBUFFER, pheremonesFbo);
     glBindTexture(GL_TEXTURE_2D, antsTextureName1);
     glBufferData(GL_ARRAY_BUFFER, sizeof(antPointsVertices), antPointsVertices, GL_STATIC_DRAW);
     glDrawArrays(GL_POINTS, 0, ANTS);
 
     // draw result to screen
-
-    // glUniform1i(v_renderMode, 3);
-    // glUniform1i(f_renderMode, 3);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0); // remove the frame buffer
+    glBindTexture(GL_TEXTURE_2D, pheremonesTextureName);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    glUniform1i(v_renderMode, 3);
+    glUniform1i(f_renderMode, 3);
+    glDrawArrays(GL_TRIANGLES, 0, 6);
 
     // Swap front/back framebuffers
     eventHandler.swapWindow();
