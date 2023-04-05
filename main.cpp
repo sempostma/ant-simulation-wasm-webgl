@@ -217,8 +217,7 @@ void initTextures(GLuint shaderProgram, EventHandler &eventHandler)
         antsData[i * ANTS_DATA + 1] = x.lo;        // position x, lower order
         antsData[i * ANTS_DATA + 2] = y.ho;                                                             // position y, higher order
         antsData[i * ANTS_DATA + 3] = y.lo;               // positoin y, lower order
-        srand(i+3);
-        antsData[i * ANTS_DATA + 4] = (GLubyte)(((float)rand() / (float)RAND_MAX) * 255.0f);        // angle (0 - 255 instead of 0 - 360)
+        antsData[i * ANTS_DATA + 4] = (GLubyte)((float)i / (float)ANTS * 255);        // angle (0 - 255 instead of 0 - 360)
         antsData[i * ANTS_DATA + 5] = 0;                                                             // not used
     }
 

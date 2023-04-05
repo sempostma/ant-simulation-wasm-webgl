@@ -68,14 +68,15 @@ void main()
         xHO += div255 * amount;
         xLO -= amount;
       } else if (xLO < 0.0) {
-        xHO -= div255;
+        float amount = abs(floor(xLO));
+        xHO -= div255 * amount;
 
         // check if outside frame
         if (xHO < 0.0) {
           xHO = 0.0;
           xLO = 0.0;
         } else {
-          xLO += 1.0;
+          xLO += amount;
         }
       }
 
@@ -91,15 +92,17 @@ void main()
         float amount = floor(yLO);
         yHO += div255 * amount;
         yLO -= amount;
-      } else if (yLO < 0.0) {
-        yHO -= div255;
+      } 
+      if (yLO < 0.0) {
+        float amount = floor(yLO);
+        yHO -= div255 * abs(amount);
 
         // check if outside frame
         if (yHO < 0.0) {
           yHO = 0.0;
           yLO = 0.0;
         } else {
-          yLO += 1.0;
+          yLO += abs(amount);
         }
       }
 
@@ -121,6 +124,10 @@ void main()
       float hdg = secondComp[1];
       float unused = secondComp[2];
 
+      float radians = hdg * RAD;
+      float xDelta = cos(radians) * speed * div255;
+      float yDelta = sin(radians) * speed * div255;
+
       if (random(vec2((2.2 + xHO) * (12.1 + yHO), (yLO + 17.9) * (xLO + 1.2))) > movementChangeChance) {
         if (random(vec2((3.21 + xHO) * (3.2 + yHO), (yLO + 12.2) * (xLO + 91.2))) < chanceOfGoingLeft) {
           // go left
@@ -129,13 +136,9 @@ void main()
           // go right
           hdg += div255;
         }
-        if (hdg > 1.0) hdg = 0.0;
-        if (hdg < 0.0) hdg = 1.0;
+        if (hdg > 1.0) hdg -= 1.0;
+        if (hdg < 0.0) hdg += 1.0;
       }
-
-      float radians = hdg * RAD;
-      float xDelta = cos(radians) * speed * div255;
-      float yDelta = sin(radians) * speed * div255;
 
       // move accross the x axis
       xLO += xDelta;
@@ -144,7 +147,9 @@ void main()
         xHO += div255 * amount;
         xLO -= amount;
       } else if (xLO < 0.0) {
-        xHO -= div255;
+        float amount = abs(floor(xLO));
+
+        xHO -= div255 * amount;
 
         // check if outside frame
         if (xHO < 0.0) {
@@ -165,7 +170,8 @@ void main()
         yHO += div255 * amount;
         yLO -= amount;
       } else if (yLO < 0.0) {
-        yHO -= div255;
+        float amount = floor(yLO);
+        yHO -= div255 * abs(amount);
 
         // check if outside frame
         if (yHO < 0.0) {
@@ -173,7 +179,7 @@ void main()
           yLO = 0.0;
           hdg = random(vec2((2.12 + xHO) * (5.12 + yHO), (yLO + 41.9) * (xLO + 7.2)));
         } else {
-          yLO += 1.0;
+          yLO += abs(amount);
         }
       }
 
