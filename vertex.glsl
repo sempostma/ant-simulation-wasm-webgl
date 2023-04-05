@@ -1,9 +1,9 @@
-#define ANTS 200
+#define ANTS 1000
 #define ANTS_DATA 6
-#define ANTS_DATA_TOTAL 400
+#define ANTS_DATA_TOTAL 2000
 #define SCALE 10
-#define WINDOW_WIDTH 640.0
-#define WINDOW_HEIGHT 640.0
+#define WINDOW_WIDTH 1920.0
+#define WINDOW_HEIGHT 1080.0
 
 uniform vec2 pan;
 uniform float zoom;
@@ -20,7 +20,7 @@ varying vec2 pheremonesTexture_coord;
 const float scale = float(SCALE);
 const float scaleDiv = 1.0 / float(SCALE);
 
-const float halfStep = 1.0 / float(ANTS_DATA_TOTAL);
+const float halfStep = 1.0 / float(ANTS_DATA_TOTAL) / 2.0;
 
 void main()
 {
@@ -38,8 +38,8 @@ void main()
 
     float antIndex = position.x;
 
-    vec4 firstComp = texture2D(v_antsTexture, vec2((antIndex * 2.0) / float(ANTS_DATA_TOTAL - 1), 0.5));
-    vec4 secondComp = texture2D(v_antsTexture, vec2(((antIndex * 2.0 + 1.0)) / float(ANTS_DATA_TOTAL - 1), 0.5));
+    vec4 firstComp = texture2D(v_antsTexture, vec2((antIndex * 2.0) / float(float(ANTS_DATA_TOTAL) - 1.0), 0.5));
+    vec4 secondComp = texture2D(v_antsTexture, vec2(((antIndex * 2.0 + 1.0)) / float(float(ANTS_DATA_TOTAL) - 1.0), 0.5));
 
     float xHO = firstComp[0];
     float xLO = firstComp[1];

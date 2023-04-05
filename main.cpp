@@ -15,7 +15,7 @@
 #include <fstream>
 #include <vector>
 
-#define ANTS 200
+#define ANTS 1000
 #define ANTS_DATA 6
 #define SCALE 10
 
@@ -206,6 +206,10 @@ void initTextures(GLuint shaderProgram, EventHandler &eventHandler)
     Camera &camera = eventHandler.camera();
     Rect &windowSize = camera.windowSize();
 
+    int maxTextureSize;
+    glGetIntegerv(GL_MAX_TEXTURE_SIZE, &maxTextureSize);
+    printf("Max texture size %i\n", maxTextureSize);
+
     // ants data texture
     GLubyte antsData[ANTS * ANTS_DATA];
     for (int i = 0; i < ANTS; i++)
@@ -233,10 +237,10 @@ void initTextures(GLuint shaderProgram, EventHandler &eventHandler)
     // initialize texture uniform
     glUniform1i(antsTextureLoc, 0);
     glUniform1i(v_antsTextureLoc, 0);
-    glUniform1i(pheremonesTextureLoc, GL_TEXTURE1);
+    glUniform1i(pheremonesTextureLoc, 1);
 
     // initialize pheremones texture 1
-    glActiveTexture(GL_TEXTURE1);
+    glActiveTexture(GL_TEXTURE0 + 1);
     glGenTextures(1, &pheremonesTextureName1);
     glBindTexture(GL_TEXTURE_2D, pheremonesTextureName1);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -246,8 +250,8 @@ void initTextures(GLuint shaderProgram, EventHandler &eventHandler)
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, windowSize.width, windowSize.height, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
 
-        // initialize pheremones texture 2
-    glActiveTexture(GL_TEXTURE1);
+    // initialize pheremones texture 2
+    glActiveTexture(GL_TEXTURE0 + 1);
     glGenTextures(1, &pheremonesTextureName2);
     glBindTexture(GL_TEXTURE_2D, pheremonesTextureName2);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -269,7 +273,7 @@ void initTextures(GLuint shaderProgram, EventHandler &eventHandler)
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, ANTS * 2, 1, 0, GL_RGB, GL_UNSIGNED_BYTE, antsData);
 
     // initialize ants texture 2
-    // glActiveTexture(GL_TEXTURE1);
+    glActiveTexture(GL_TEXTURE0);
     glGenTextures(1, &antsTextureName2);
     glBindTexture(GL_TEXTURE_2D, antsTextureName2);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -348,7 +352,10 @@ void redraw(EventHandler &eventHandler)
     glUniform1i(v_renderMode, 1);
     glUniform1i(f_renderMode, 1);
 
+    glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, antsTextureName1);
+    glActiveTexture(GL_TEXTURE0 + 1);
+    glBindTexture(GL_TEXTURE_2D, pheremonesTextureName1);
     glBindFramebuffer(GL_FRAMEBUFFER, antsFbo2);
     glBufferData(GL_ARRAY_BUFFER, sizeof(antsLineVertices), antsLineVertices, GL_STATIC_DRAW);
     glViewport(0, 0, ANTS * 2, 1);
@@ -367,19 +374,15 @@ void redraw(EventHandler &eventHandler)
 
     glViewport(0, 0, windowSize.width, windowSize.height);
 
-    // blur pheremone texture
-    glUniform1i(v_renderMode, 2);
-    glUniform1i(f_renderMode, 2);
-    glBindFramebuffer(GL_FRAMEBUFFER, pheremonesFbo2);
-    glBindTexture(GL_TEXTURE_2D, pheremonesTextureName1);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-    glDrawArrays(GL_TRIANGLES, 0, 6);
-
     // write to pheremonebuffer
     glUniform1i(v_renderMode, 3);
     glUniform1i(f_renderMode, 3);
 
+    glBindFramebuffer(GL_FRAMEBUFFER, pheremonesFbo2);
+    glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, antsTextureName1);
+    glActiveTexture(GL_TEXTURE0 + 1);
+    glBindTexture(GL_TEXTURE_2D, pheremonesTextureName1);
     glBufferData(GL_ARRAY_BUFFER, sizeof(antPointsVertices), antPointsVertices, GL_STATIC_DRAW);
     glDrawArrays(GL_POINTS, 0, ANTS);
 
@@ -392,9 +395,19 @@ void redraw(EventHandler &eventHandler)
     pheremonesFbo1 = pheremonesFbo2;
     pheremonesFbo2 = pheremonesFboTmp;
 
+    // blur pheremone texture
+    glUniform1i(v_renderMode, 2);
+    glUniform1i(f_renderMode, 2);
+    glActiveTexture(GL_TEXTURE0 + 1);
+    glBindFramebuffer(GL_FRAMEBUFFER, pheremonesFbo2);
+    glBindTexture(GL_TEXTURE_2D, pheremonesTextureName1);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    glDrawArrays(GL_TRIANGLES, 0, 6);
+
     // draw result to screen
     glBindFramebuffer(GL_FRAMEBUFFER, 0); // remove the frame buffer
-    glBindTexture(GL_TEXTURE_2D, pheremonesTextureName1);
+    glActiveTexture(GL_TEXTURE0 + 1);
+    glBindTexture(GL_TEXTURE_2D, pheremonesTextureName2);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
     glUniform1i(v_renderMode, 4);
     glUniform1i(f_renderMode, 4);

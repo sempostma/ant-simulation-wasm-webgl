@@ -57,5 +57,5 @@ inline Camera::Camera()
     , mZoom (1.0f)
     , mAspect (1.0f)
 {
-    setWindowSize(640, 640);
+    setWindowSize(1920, 1080);
 }

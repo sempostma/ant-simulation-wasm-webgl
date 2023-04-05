@@ -1,11 +1,14 @@
-#define ANTS 200
+#define ANTS 1000
 #define ANTS_DATA 6
-#define ANTS_DATA_TOTAL 400
-#define WINDOW_WIDTH 640.0
-#define WINDOW_HEIGHT 640.0
+#define ANTS_DATA_TOTAL 2000
+#define WINDOW_WIDTH 1920.0
+#define WINDOW_HEIGHT 1080.0
+#define PHERMONE_RECEPTOR_DISTANCE 5.0
+#define BLUR_SPEED 0.05
 
 #define ANTS_COORDS_LIMIT 65280
 #define SCALE 10
+#define PHEREMONE_EVAPORATION_SPEED 0.0015
 
 precision mediump float;
 
@@ -24,6 +27,7 @@ const float maxWidth = min((WINDOW_WIDTH - 1.0) * float(SCALE), float(ANTS_COORD
 const float maxHeight = min((WINDOW_HEIGHT - 1.0) * float(SCALE), float(ANTS_COORDS_LIMIT - 1));
 
 const float div255 = 0.0039215686274509803921568627451;
+const float ninetyDegressRadians = 1.5708;
 
 const float _maxHeightHO = floor(maxHeight / 255.0);
 const float _maxHeightLO = maxHeight - (_maxHeightHO * 255.0);
@@ -38,6 +42,7 @@ const float maxWidthHO = _maxWidthHO * div255;
 const float maxWidthLO = _maxWidthLO * div255;
 
 const float marginOfError = 0.0000001;
+const float scaleDiv = 1.0 / float(SCALE);
 
 float random(vec2 seed) {
   return fract(sin(dot(seed, vec2(12.9898, 78.233))) * 43758.5453);
@@ -46,11 +51,11 @@ float random(vec2 seed) {
 void main()
 {
   if (f_renderMode == 1) {
-    float x = gl_FragCoord.x;
+    float index = gl_FragCoord.x;
 
-    if (mod(x, 2.0) < 1.0) {
-      vec4 firstComp = texture2D(antsTexture, vec2(x / float(ANTS_DATA_TOTAL), 1.0));
-      vec4 secondComp = texture2D(antsTexture, vec2((x + 1.0) / float(ANTS_DATA_TOTAL), 1.0));
+    if (mod(index, 2.0) < 1.0) {
+      vec4 firstComp = texture2D(antsTexture, vec2(index / float(ANTS_DATA_TOTAL), 0.5));
+      vec4 secondComp = texture2D(antsTexture, vec2((index + 1.0) / float(ANTS_DATA_TOTAL), 0.5));
 
       float xHO = firstComp[0];
       float xLO = firstComp[1];
@@ -115,8 +120,8 @@ void main()
       gl_FragColor = vec4(xHO, xLO, yHO, 1.0);
       return;
     } else {
-      vec4 firstComp = texture2D(antsTexture, vec2((x - 1.0) / float(ANTS_DATA_TOTAL), 1.0));
-      vec4 secondComp = texture2D(antsTexture, vec2((x) / float(ANTS_DATA_TOTAL), 1.0));
+      vec4 firstComp = texture2D(antsTexture, vec2((index - 1.0) / float(ANTS_DATA_TOTAL), 0.5));
+      vec4 secondComp = texture2D(antsTexture, vec2((index) / float(ANTS_DATA_TOTAL), 0.5));
 
       float xHO = firstComp[0];
       float xLO = firstComp[1];
@@ -129,8 +134,37 @@ void main()
       float xDelta = cos(radians) * speed * div255;
       float yDelta = sin(radians) * speed * div255;
 
-      if (random(vec2((2.2 + xHO) * (12.1 + yHO), (yLO + 17.9) * (xLO + 1.2))) > movementChangeChance) {
-        if (random(vec2((3.21 + xHO) * (3.2 + yHO), (yLO + 12.2) * (xLO + 91.2))) < chanceOfGoingLeft) {
+      float x = (xHO * 255.0 + xLO) * scaleDiv * 255.0;
+      float y = (yHO * 255.0 + yLO) * scaleDiv * 255.0;
+
+      // determine phermone direction
+      vec2 pheremoneForwardPixelPos = vec2(cos(radians), sin(radians)) * float(PHERMONE_RECEPTOR_DISTANCE) + vec2(x, y);
+      vec4 pheremoneForwardTexel = texture2D(pheremonesTexture, vec2(pheremoneForwardPixelPos.x / WINDOW_WIDTH, pheremoneForwardPixelPos.y / WINDOW_HEIGHT));
+
+      vec2 pheremoneLeftPixelPos = vec2(cos(radians - ninetyDegressRadians), sin(radians - ninetyDegressRadians)) * float(PHERMONE_RECEPTOR_DISTANCE) + pheremoneForwardPixelPos;
+      vec4 pheremoneLeftTexel = texture2D(pheremonesTexture, vec2(pheremoneLeftPixelPos.x / WINDOW_WIDTH, pheremoneLeftPixelPos.y / WINDOW_HEIGHT));
+
+      vec2 pheremoneRightPixelPos = vec2(cos(radians + ninetyDegressRadians), sin(radians + ninetyDegressRadians)) * float(PHERMONE_RECEPTOR_DISTANCE) + pheremoneForwardPixelPos;
+      vec4 pheremoneRightTexel = texture2D(pheremonesTexture, vec2(pheremoneRightPixelPos.x / WINDOW_WIDTH, pheremoneRightPixelPos.y / WINDOW_HEIGHT));
+
+      if (pheremoneLeftTexel.x > pheremoneRightTexel.x && pheremoneLeftTexel.x > pheremoneForwardTexel.x) {
+        // float strengthDelta = pheremoneLeftTexel.x - pheremoneForwardTexel.x;
+        hdg -= div255 * 3.0;
+      }
+
+      else if (pheremoneRightTexel.x > pheremoneLeftTexel.x && pheremoneRightTexel.x > pheremoneForwardTexel.x) {
+        // float strengthDelta = pheremoneRightTexel.x - pheremoneForwardTexel.x;
+        hdg += div255 * 3.0;
+      }
+
+      // if (pheremoneLeftTexel.x > pheremoneRightTexel.x) {
+      //   hdg -= div255 * 180.0;
+      // } else if (pheremoneForwardTexel.x < pheremoneRightTexel.x) {
+      //   // hdg += div255;
+      // }
+
+      if (random(vec2(index + (2.2 + xHO) * (12.1 + yHO), (yLO + 17.9) * (xLO + 1.2))) > movementChangeChance) {
+        if (random(vec2(index + (3.21 + xHO) * (3.2 + yHO), (yLO + 12.2) * (xLO + 91.2))) < chanceOfGoingLeft) {
           // go left
           hdg -= div255;
         } else {
@@ -206,19 +240,19 @@ void main()
 
     vec4 texel1 = texture2D(pheremonesTexture, vec2(gl_FragCoord.x / WINDOW_WIDTH, gl_FragCoord.y / WINDOW_HEIGHT));
 
-    vec4 texel2 = texture2D(pheremonesTexture, vec2(gl_FragCoord.x / WINDOW_WIDTH, (gl_FragCoord.y + 1.0) / WINDOW_HEIGHT));
-    vec4 texel3 = texture2D(pheremonesTexture, vec2((gl_FragCoord.x + 1.0) / WINDOW_WIDTH, gl_FragCoord.y / WINDOW_HEIGHT));
-    vec4 texel4 = texture2D(pheremonesTexture, vec2(gl_FragCoord.x / WINDOW_WIDTH, (gl_FragCoord.y - 1.0) / WINDOW_HEIGHT));
-    vec4 texel5 = texture2D(pheremonesTexture, vec2((gl_FragCoord.x - 1.0) / WINDOW_WIDTH, gl_FragCoord.y / WINDOW_HEIGHT));
+    vec4 texel2 = texture2D(pheremonesTexture, vec2(gl_FragCoord.x / WINDOW_WIDTH, (gl_FragCoord.y + 1.0) / WINDOW_HEIGHT)) * BLUR_SPEED;
+    vec4 texel3 = texture2D(pheremonesTexture, vec2((gl_FragCoord.x + 1.0) / WINDOW_WIDTH, gl_FragCoord.y / WINDOW_HEIGHT)) * BLUR_SPEED;
+    vec4 texel4 = texture2D(pheremonesTexture, vec2(gl_FragCoord.x / WINDOW_WIDTH, (gl_FragCoord.y - 1.0) / WINDOW_HEIGHT)) * BLUR_SPEED;
+    vec4 texel5 = texture2D(pheremonesTexture, vec2((gl_FragCoord.x - 1.0) / WINDOW_WIDTH, gl_FragCoord.y / WINDOW_HEIGHT)) * BLUR_SPEED;
 
-    vec4 texel6 = texture2D(pheremonesTexture, vec2((gl_FragCoord.x + 1.0) / WINDOW_WIDTH, (gl_FragCoord.y + 1.0) / WINDOW_HEIGHT));
-    vec4 texel7 = texture2D(pheremonesTexture, vec2((gl_FragCoord.x + 1.0) / WINDOW_WIDTH, (gl_FragCoord.y - 1.0) / WINDOW_HEIGHT));
-    vec4 texel8 = texture2D(pheremonesTexture, vec2((gl_FragCoord.x - 1.0) / WINDOW_WIDTH, (gl_FragCoord.y - 1.0) / WINDOW_HEIGHT));
-    vec4 texel9 = texture2D(pheremonesTexture, vec2((gl_FragCoord.x - 1.0) / WINDOW_WIDTH, (gl_FragCoord.y + 1.0) / WINDOW_HEIGHT));
+    vec4 texel6 = texture2D(pheremonesTexture, vec2((gl_FragCoord.x + 1.0) / WINDOW_WIDTH, (gl_FragCoord.y + 1.0) / WINDOW_HEIGHT)) * BLUR_SPEED;
+    vec4 texel7 = texture2D(pheremonesTexture, vec2((gl_FragCoord.x + 1.0) / WINDOW_WIDTH, (gl_FragCoord.y - 1.0) / WINDOW_HEIGHT)) * BLUR_SPEED;
+    vec4 texel8 = texture2D(pheremonesTexture, vec2((gl_FragCoord.x - 1.0) / WINDOW_WIDTH, (gl_FragCoord.y - 1.0) / WINDOW_HEIGHT)) * BLUR_SPEED;
+    vec4 texel9 = texture2D(pheremonesTexture, vec2((gl_FragCoord.x - 1.0) / WINDOW_WIDTH, (gl_FragCoord.y + 1.0) / WINDOW_HEIGHT)) * BLUR_SPEED;
 
-    vec3 average = (texel1.xyz + texel2.xyz + texel3.xyz + texel4.xyz + texel5.xyz + texel6.xyz + texel7.xyz + texel8.xyz + texel9.xyz) / 9.0;
+    vec3 average = (texel1.xyz + texel2.xyz + texel3.xyz + texel4.xyz + texel5.xyz + texel6.xyz + texel7.xyz + texel8.xyz + texel9.xyz) / (1.0 + 8.0 * BLUR_SPEED);
 
-    gl_FragColor = vec4(average, 1.0);
+    gl_FragColor = vec4(average - PHEREMONE_EVAPORATION_SPEED, 1.0);
   } else if (f_renderMode == 3) {
     gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
   } else if (f_renderMode == 4) {
