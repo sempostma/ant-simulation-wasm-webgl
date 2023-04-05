@@ -28,7 +28,12 @@ void main()
     // render ants data pixel
     gl_Position = vec4(position.xy, 0.0, 1.0);
     antsTexture_coord = position.xy;
-  } else if (v_renderMode == 2) {
+  }
+  else if (v_renderMode == 2) {
+    gl_Position = vec4(position.xy, 0.0, 1.0);
+    pheremonesTexture_coord = position.xy;
+  }
+  else if (v_renderMode == 3) {
     // render ants location
 
     float antIndex = position.x;
@@ -47,7 +52,7 @@ void main()
     gl_Position = vec4(x -1.0, y - 1.0, 0.0, 1.0);
     gl_PointSize = 2.0;
     antsTexture_coord = position.xy;
-  } else if (v_renderMode == 3) {
+  } else if (v_renderMode == 4) {
     // render final result to the screen
 
     gl_Position = vec4(position.xy, 0.0, 1.0);

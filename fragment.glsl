@@ -132,10 +132,10 @@ void main()
       if (random(vec2((2.2 + xHO) * (12.1 + yHO), (yLO + 17.9) * (xLO + 1.2))) > movementChangeChance) {
         if (random(vec2((3.21 + xHO) * (3.2 + yHO), (yLO + 12.2) * (xLO + 91.2))) < chanceOfGoingLeft) {
           // go left
-          // hdg -= div255;
+          hdg -= div255;
         } else {
           // go right
-          // hdg += div255;
+          hdg += div255;
         }
         if (hdg > 1.0) hdg -= 1.0;
         if (hdg < 0.0) hdg += 1.0;
@@ -199,11 +199,29 @@ void main()
       gl_FragColor = vec4(yLO, hdg, unused, 1.0);
       return;
     }
-
-    // extract ants data
   } else if (f_renderMode == 2) {
-    gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
+    // blur
+
+    // TODO: try glGenerateTextureMipmap instead
+
+    vec4 texel1 = texture2D(pheremonesTexture, vec2(gl_FragCoord.x / WINDOW_WIDTH, gl_FragCoord.y / WINDOW_HEIGHT));
+
+    vec4 texel2 = texture2D(pheremonesTexture, vec2(gl_FragCoord.x / WINDOW_WIDTH, (gl_FragCoord.y + 1.0) / WINDOW_HEIGHT));
+    vec4 texel3 = texture2D(pheremonesTexture, vec2((gl_FragCoord.x + 1.0) / WINDOW_WIDTH, gl_FragCoord.y / WINDOW_HEIGHT));
+    vec4 texel4 = texture2D(pheremonesTexture, vec2(gl_FragCoord.x / WINDOW_WIDTH, (gl_FragCoord.y - 1.0) / WINDOW_HEIGHT));
+    vec4 texel5 = texture2D(pheremonesTexture, vec2((gl_FragCoord.x - 1.0) / WINDOW_WIDTH, gl_FragCoord.y / WINDOW_HEIGHT));
+
+    vec4 texel6 = texture2D(pheremonesTexture, vec2((gl_FragCoord.x + 1.0) / WINDOW_WIDTH, (gl_FragCoord.y + 1.0) / WINDOW_HEIGHT));
+    vec4 texel7 = texture2D(pheremonesTexture, vec2((gl_FragCoord.x + 1.0) / WINDOW_WIDTH, (gl_FragCoord.y - 1.0) / WINDOW_HEIGHT));
+    vec4 texel8 = texture2D(pheremonesTexture, vec2((gl_FragCoord.x - 1.0) / WINDOW_WIDTH, (gl_FragCoord.y - 1.0) / WINDOW_HEIGHT));
+    vec4 texel9 = texture2D(pheremonesTexture, vec2((gl_FragCoord.x - 1.0) / WINDOW_WIDTH, (gl_FragCoord.y + 1.0) / WINDOW_HEIGHT));
+
+    vec3 average = (texel1.xyz + texel2.xyz + texel3.xyz + texel4.xyz + texel5.xyz + texel6.xyz + texel7.xyz + texel8.xyz + texel9.xyz) / 9.0;
+
+    gl_FragColor = vec4(average, 1.0);
   } else if (f_renderMode == 3) {
+    gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
+  } else if (f_renderMode == 4) {
     gl_FragColor = texture2D(pheremonesTexture, vec2(gl_FragCoord.x / WINDOW_WIDTH, gl_FragCoord.y / WINDOW_HEIGHT));
   }
 }
