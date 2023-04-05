@@ -132,10 +132,10 @@ void main()
       if (random(vec2((2.2 + xHO) * (12.1 + yHO), (yLO + 17.9) * (xLO + 1.2))) > movementChangeChance) {
         if (random(vec2((3.21 + xHO) * (3.2 + yHO), (yLO + 12.2) * (xLO + 91.2))) < chanceOfGoingLeft) {
           // go left
-          hdg -= div255;
+          // hdg -= div255;
         } else {
           // go right
-          hdg += div255;
+          // hdg += div255;
         }
         if (hdg > 1.0) hdg -= 1.0;
         if (hdg < 0.0) hdg += 1.0;
@@ -154,13 +154,13 @@ void main()
 
         // check if outside frame
         if (xHO < 0.0) {
-          hdg = random(vec2((2.12 + xHO) * (5.12 + yHO), (yLO + 41.9) * (xLO + 7.2)));
+          hdg = 0.5 - hdg;
         }
       }
       
       // check if outside frame
       if (xHO > (maxWidthHO - marginOfError) && xLO > (maxWidthLO - marginOfError)) {
-        hdg = random(vec2((2.12 + xHO) * (5.12 + yHO), (yLO + 41.9) * (xLO + 7.2)));
+        hdg = 0.5 - hdg;
       }
 
       // move accross the y axis
@@ -178,7 +178,7 @@ void main()
         if (yHO < 0.0) {
           yHO = 0.0;
           yLO = 0.0;
-          hdg = random(vec2((2.12 + xHO) * (5.12 + yHO), (yLO + 41.9) * (xLO + 7.2)));
+          hdg = 1.0 - hdg;
         } else {
           yLO += abs(amount);
         }
@@ -186,8 +186,14 @@ void main()
 
       // check if outside frame
       if (yHO > (maxHeightHO - marginOfError) && yLO > (maxHeightLO - marginOfError)) {
-        hdg = random(vec2((2.12 + xHO) * (5.12 + yHO), (yLO + 41.9) * (xLO + 7.2)));
+        hdg = 1.0 - hdg;
         yLO = maxHeightLO - div255;
+      }
+
+      if (hdg > 1.0) {
+        hdg -= 1.0;
+      } else if (hdg < 0.0) {
+        hdg += 1.0;
       }
 
       gl_FragColor = vec4(yLO, hdg, unused, 1.0);
