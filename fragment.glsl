@@ -1,14 +1,14 @@
-#define ANTS 1000
+#define ANTS 5000
 #define ANTS_DATA 6
-#define ANTS_DATA_TOTAL 2000
+#define ANTS_DATA_TOTAL 10000
 #define WINDOW_WIDTH 1920.0
 #define WINDOW_HEIGHT 1080.0
-#define PHERMONE_RECEPTOR_DISTANCE 5.0
+#define PHERMONE_RECEPTOR_DISTANCE 12.0
 #define BLUR_SPEED 0.05
 
 #define ANTS_COORDS_LIMIT 65280
 #define SCALE 10
-#define PHEREMONE_EVAPORATION_SPEED 0.0015
+#define PHEREMONE_EVAPORATION_SPEED 0.004
 
 precision mediump float;
 
@@ -19,8 +19,10 @@ uniform sampler2D antsTexture;
 uniform sampler2D pheremonesTexture;
 uniform int f_renderMode;
 
-const float speed = 10.0;
-const float movementChangeChance = 0.5;
+const float speed = 20.0;
+const float movementChangeChance = 0.15;
+const float randomChangeDirectionChangeSpeed = 2.0;
+const float pheremoneDetectionDirectionChangeSpeed = 3.5;
 const float chanceOfGoingLeft = 0.5;
 const float RAD = 6.283185307179586;
 const float maxWidth = min((WINDOW_WIDTH - 1.0) * float(SCALE), float(ANTS_COORDS_LIMIT - 1));
@@ -75,19 +77,18 @@ void main()
         xLO -= amount;
       } else if (xLO < 0.0) {
         float amount = abs(floor(xLO));
-        xHO -= div255 * amount;
 
-        // check if outside frame
-        if (xHO < 0.0) {
+        if (xHO < div255 - marginOfError) {
           xHO = 0.0;
           xLO = 0.0;
         } else {
+          xHO -= div255 * amount;
           xLO += amount;
         }
       }
 
       // check if outside frame
-      if (xHO > (maxWidthHO - marginOfError) && xLO > (maxWidthLO - marginOfError)) {
+      else if (xHO > (maxWidthHO - marginOfError) && xLO > (maxWidthLO - marginOfError)) {
         xHO = maxWidthHO;
         xLO = maxWidthLO - div255;
       }
@@ -149,27 +150,21 @@ void main()
 
       if (pheremoneLeftTexel.x > pheremoneRightTexel.x && pheremoneLeftTexel.x > pheremoneForwardTexel.x) {
         // float strengthDelta = pheremoneLeftTexel.x - pheremoneForwardTexel.x;
-        hdg -= div255 * 3.0;
+        hdg -= div255 * pheremoneDetectionDirectionChangeSpeed;
       }
 
       else if (pheremoneRightTexel.x > pheremoneLeftTexel.x && pheremoneRightTexel.x > pheremoneForwardTexel.x) {
         // float strengthDelta = pheremoneRightTexel.x - pheremoneForwardTexel.x;
-        hdg += div255 * 3.0;
+        hdg += div255 * pheremoneDetectionDirectionChangeSpeed;
       }
 
-      // if (pheremoneLeftTexel.x > pheremoneRightTexel.x) {
-      //   hdg -= div255 * 180.0;
-      // } else if (pheremoneForwardTexel.x < pheremoneRightTexel.x) {
-      //   // hdg += div255;
-      // }
-
-      if (random(vec2(index + (2.2 + xHO) * (12.1 + yHO), (yLO + 17.9) * (xLO + 1.2))) > movementChangeChance) {
+      if (random(vec2(index + (2.2 + xHO) * (12.1 + yHO), (yLO + 17.9) * (xLO + 1.2))) < movementChangeChance) {
         if (random(vec2(index + (3.21 + xHO) * (3.2 + yHO), (yLO + 12.2) * (xLO + 91.2))) < chanceOfGoingLeft) {
           // go left
-          hdg -= div255;
+          hdg -= div255 * randomChangeDirectionChangeSpeed;
         } else {
           // go right
-          hdg += div255;
+          hdg += div255 * randomChangeDirectionChangeSpeed;
         }
         if (hdg > 1.0) hdg -= 1.0;
         if (hdg < 0.0) hdg += 1.0;
@@ -184,16 +179,17 @@ void main()
       } else if (xLO < 0.0) {
         float amount = abs(floor(xLO));
 
-        xHO -= div255 * amount;
-
         // check if outside frame
-        if (xHO < 0.0) {
+        if (xHO < div255 - marginOfError) {
           hdg = 0.5 - hdg;
+        } else {
+          xHO -= div255 * amount;
+          xLO += amount;
         }
       }
       
       // check if outside frame
-      if (xHO > (maxWidthHO - marginOfError) && xLO > (maxWidthLO - marginOfError)) {
+      else if (xHO > (maxWidthHO - marginOfError) && xLO > (maxWidthLO - marginOfError)) {
         hdg = 0.5 - hdg;
       }
 
@@ -206,14 +202,14 @@ void main()
         yLO -= amount;
       } else if (yLO < 0.0) {
         float amount = floor(yLO);
-        yHO -= div255 * abs(amount);
 
         // check if outside frame
-        if (yHO < 0.0) {
+        if (yHO < div255 - marginOfError) {
           yHO = 0.0;
           yLO = 0.0;
           hdg = 1.0 - hdg;
         } else {
+          yHO -= div255 * abs(amount);
           yLO += abs(amount);
         }
       }
@@ -255,6 +251,7 @@ void main()
     gl_FragColor = vec4(average - PHEREMONE_EVAPORATION_SPEED, 1.0);
   } else if (f_renderMode == 3) {
     gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
+    gl_FragColor = vec4(color.xyz, 1.0);
   } else if (f_renderMode == 4) {
     gl_FragColor = texture2D(pheremonesTexture, vec2(gl_FragCoord.x / WINDOW_WIDTH, gl_FragCoord.y / WINDOW_HEIGHT));
   }

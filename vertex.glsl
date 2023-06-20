@@ -1,6 +1,6 @@
-#define ANTS 1000
+#define ANTS 5000
 #define ANTS_DATA 6
-#define ANTS_DATA_TOTAL 2000
+#define ANTS_DATA_TOTAL 10000
 #define SCALE 10
 #define WINDOW_WIDTH 1920.0
 #define WINDOW_HEIGHT 1080.0
@@ -21,6 +21,12 @@ const float scale = float(SCALE);
 const float scaleDiv = 1.0 / float(SCALE);
 
 const float halfStep = 1.0 / float(ANTS_DATA_TOTAL) / 2.0;
+
+float lerp(float a, float b, float ratio) {
+  if (ratio < 0.0) return a;
+  if (ratio > 1.0) return b;
+  return a + (b - a) * ratio;
+}
 
 void main()
 {
@@ -51,6 +57,14 @@ void main()
 
     gl_Position = vec4(x -1.0, y - 1.0, 0.0, 1.0);
     gl_PointSize = 2.0;
+
+    float ratio = antIndex / float(ANTS);
+    float r = lerp(1.0, 0.0, abs(1.0 - ratio) * 2.0);
+    float g = lerp(1.0, 0.0, abs(1.0 - (ratio + 0.55)) * 2.0);
+    float b = lerp(1.0, 0.0, abs(1.0 - (ratio + 1.0)) * 2.0);
+
+    color = vec3(r, g, b);
+    
     antsTexture_coord = position.xy;
   } else if (v_renderMode == 4) {
     // render final result to the screen

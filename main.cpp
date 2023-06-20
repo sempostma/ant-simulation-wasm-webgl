@@ -15,7 +15,7 @@
 #include <fstream>
 #include <vector>
 
-#define ANTS 1000
+#define ANTS 5000
 #define ANTS_DATA 6
 #define SCALE 10
 
