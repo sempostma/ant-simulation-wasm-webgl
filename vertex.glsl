@@ -1,6 +1,7 @@
-#define ANTS 5000
+#define ANTS 10922
 #define ANTS_DATA 6
-#define ANTS_DATA_TOTAL 10000
+#define ANTS_DATA_TOTAL 65532
+#define ANTS_TEX_DIM 256
 #define SCALE 10
 #define WINDOW_WIDTH 1920.0
 #define WINDOW_HEIGHT 1080.0
@@ -43,9 +44,11 @@ void main()
     // render ants location
 
     float antIndex = position.x;
+    float antX = mod(antIndex * 2.0, float(ANTS_TEX_DIM));
+    float antY = (antIndex * 2.0) / float(ANTS_TEX_DIM);
 
-    vec4 firstComp = texture2D(v_antsTexture, vec2((antIndex * 2.0) / float(float(ANTS_DATA_TOTAL) - 1.0), 0.5));
-    vec4 secondComp = texture2D(v_antsTexture, vec2(((antIndex * 2.0 + 1.0)) / float(float(ANTS_DATA_TOTAL) - 1.0), 0.5));
+    vec4 firstComp = texture2D(v_antsTexture, vec2(antX - 1.0, antY + 0.5));
+    vec4 secondComp = texture2D(v_antsTexture, vec2(antX, antY + 0.5));
 
     float xHO = firstComp[0];
     float xLO = firstComp[1];

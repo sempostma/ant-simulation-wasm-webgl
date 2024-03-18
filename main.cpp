@@ -15,8 +15,10 @@
 #include <fstream>
 #include <vector>
 
-#define ANTS 5000
+#define ANTS 10922
 #define ANTS_DATA 6
+#define ANTS_DATA_TOTAL 65532
+#define ANTS_TEX_DIM 256
 #define SCALE 10
 
 GLfloat antPointsVertices[ANTS * 3];
@@ -209,9 +211,11 @@ void initTextures(GLuint shaderProgram, EventHandler &eventHandler)
     int maxTextureSize;
     glGetIntegerv(GL_MAX_TEXTURE_SIZE, &maxTextureSize);
     printf("Max texture size %i\n", maxTextureSize);
+    printf("Current tex dimensions %ix%i\n", ANTS_TEX_DIM, ANTS_TEX_DIM);
 
     // ants data texture
     GLubyte antsData[ANTS * ANTS_DATA];
+
     for (int i = 0; i < ANTS; i++)
     {
         auto x = convertPositionToBytes(windowSize.width * SCALE / 2);
