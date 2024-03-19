@@ -131,97 +131,97 @@ void EventHandler::processEvents()
                 break;
             }
 
-            case SDL_MOUSEWHEEL: 
-            {
-                // SDL_MOUSEWHEEL regression? 
-                // m->y no longer reliable (often y is 0 when mouse wheel is spun up or down), use m->preciseY instead
-                SDL_MouseWheelEvent *m = (SDL_MouseWheelEvent*)&event;
-            	#ifdef EVENTS_DEBUG
-                	printf ("SDL_MOUSEWHEEL= x,y=%d,%d preciseX,preciseY=%f,%f\n", m->x, m->y, m->preciseX, m->preciseY);
-            	#endif
-            	bool mouseWheelDown = (m->preciseY < 0.0);
-            	zoomEventMouse(mouseWheelDown, mMousePositionX, mMousePositionY);
-            	break;
-            }
+            // case SDL_MOUSEWHEEL: 
+            // {
+            //     // SDL_MOUSEWHEEL regression? 
+            //     // m->y no longer reliable (often y is 0 when mouse wheel is spun up or down), use m->preciseY instead
+            //     SDL_MouseWheelEvent *m = (SDL_MouseWheelEvent*)&event;
+            // 	#ifdef EVENTS_DEBUG
+            //     	printf ("SDL_MOUSEWHEEL= x,y=%d,%d preciseX,preciseY=%f,%f\n", m->x, m->y, m->preciseX, m->preciseY);
+            // 	#endif
+            // 	bool mouseWheelDown = (m->preciseY < 0.0);
+            // 	zoomEventMouse(mouseWheelDown, mMousePositionX, mMousePositionY);
+            // 	break;
+            // }
             
-            case SDL_MOUSEMOTION: 
-            {
-                SDL_MouseMotionEvent *m = (SDL_MouseMotionEvent*)&event;
-                mMousePositionX = m->x;
-                mMousePositionY = m->y;
-                if (mMouseButtonDown && !mFingerDown && !mPinch)
-                    panEventMouse(mMousePositionX, mMousePositionY);
-                break;
-            }
+            // case SDL_MOUSEMOTION: 
+            // {
+            //     SDL_MouseMotionEvent *m = (SDL_MouseMotionEvent*)&event;
+            //     mMousePositionX = m->x;
+            //     mMousePositionY = m->y;
+            //     if (mMouseButtonDown && !mFingerDown && !mPinch)
+            //         panEventMouse(mMousePositionX, mMousePositionY);
+            //     break;
+            // }
 
-            case SDL_MOUSEBUTTONDOWN: 
-            {
-                SDL_MouseButtonEvent *m = (SDL_MouseButtonEvent*)&event;
-                if (m->button == SDL_BUTTON_LEFT && !mFingerDown && !mPinch)
-                {
-                    mMouseButtonDown = true;
-                    mMouseButtonDownX = m->x;
-                    mMouseButtonDownY = m->y;
-                    mCamera.setBasePan();
-                }
-                break;
-            }
+            // case SDL_MOUSEBUTTONDOWN: 
+            // {
+            //     SDL_MouseButtonEvent *m = (SDL_MouseButtonEvent*)&event;
+            //     if (m->button == SDL_BUTTON_LEFT && !mFingerDown && !mPinch)
+            //     {
+            //         mMouseButtonDown = true;
+            //         mMouseButtonDownX = m->x;
+            //         mMouseButtonDownY = m->y;
+            //         mCamera.setBasePan();
+            //     }
+            //     break;
+            // }
 
-            case SDL_MOUSEBUTTONUP: 
-            {
-                SDL_MouseButtonEvent *m = (SDL_MouseButtonEvent*)&event;
-                if (m->button == SDL_BUTTON_LEFT)
-                    mMouseButtonDown = false;
-                break;
-            }
+            // case SDL_MOUSEBUTTONUP: 
+            // {
+            //     SDL_MouseButtonEvent *m = (SDL_MouseButtonEvent*)&event;
+            //     if (m->button == SDL_BUTTON_LEFT)
+            //         mMouseButtonDown = false;
+            //     break;
+            // }
 
-            case SDL_FINGERMOTION:
-                if (mFingerDown)
-                {
-                    SDL_TouchFingerEvent *m = (SDL_TouchFingerEvent*)&event;
+            // case SDL_FINGERMOTION:
+            //     if (mFingerDown)
+            //     {
+            //         SDL_TouchFingerEvent *m = (SDL_TouchFingerEvent*)&event;
 
-                    // Finger down and finger moving must match
-                    if (m->fingerId == mFingerDownId)
-                        panEventFinger(m->x, m->y);
-                }
-                break;
+            //         // Finger down and finger moving must match
+            //         if (m->fingerId == mFingerDownId)
+            //             panEventFinger(m->x, m->y);
+            //     }
+            //     break;
 
-            case SDL_FINGERDOWN:
-                if (!mPinch)
-                {
-                    // Finger already down means multiple fingers, which is handled by multigesture event
-                    if (mFingerDown)
-                        mFingerDown = false;
-                    else
-                    {
-                        SDL_TouchFingerEvent *m = (SDL_TouchFingerEvent*)&event;
+            // case SDL_FINGERDOWN:
+            //     if (!mPinch)
+            //     {
+            //         // Finger already down means multiple fingers, which is handled by multigesture event
+            //         if (mFingerDown)
+            //             mFingerDown = false;
+            //         else
+            //         {
+            //             SDL_TouchFingerEvent *m = (SDL_TouchFingerEvent*)&event;
 
-                        mFingerDown = true;
-                        mFingerDownX = m->x;
-                        mFingerDownY = m->y;
-                        mFingerDownId = m->fingerId;
-                        mCamera.setBasePan();
-                    }
-                }
-                break;
+            //             mFingerDown = true;
+            //             mFingerDownX = m->x;
+            //             mFingerDownY = m->y;
+            //             mFingerDownId = m->fingerId;
+            //             mCamera.setBasePan();
+            //         }
+            //     }
+            //     break;
 
-            case SDL_MULTIGESTURE:
-            {
-                SDL_MultiGestureEvent *m = (SDL_MultiGestureEvent*)&event;
-                if (m->numFingers == 2 && fabs(m->dDist) >= cPinchZoomThreshold)
-                {
-                    mPinch = true;
-                    mFingerDown = false;
-                    mMouseButtonDown = false;
-                    zoomEventPinch(m->dDist, m->x, m->y);
-                }
-                break;
-            }
+            // case SDL_MULTIGESTURE:
+            // {
+            //     SDL_MultiGestureEvent *m = (SDL_MultiGestureEvent*)&event;
+            //     if (m->numFingers == 2 && fabs(m->dDist) >= cPinchZoomThreshold)
+            //     {
+            //         mPinch = true;
+            //         mFingerDown = false;
+            //         mMouseButtonDown = false;
+            //         zoomEventPinch(m->dDist, m->x, m->y);
+            //     }
+            //     break;
+            // }
 
-            case SDL_FINGERUP:
-                mFingerDown = false;
-                mPinch = false;
-                break;
+            // case SDL_FINGERUP:
+            //     mFingerDown = false;
+            //     mPinch = false;
+            //     break;
         }
 
         #ifdef EVENTS_DEBUG
