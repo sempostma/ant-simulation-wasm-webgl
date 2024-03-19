@@ -8,6 +8,7 @@
 #include <SDL_opengles2.h>
 
 #include "events.h"
+#include "timer.h"
 
 #include <string>
 #include <cstdio>
@@ -15,11 +16,21 @@
 #include <fstream>
 #include <vector>
 
-#define ANTS 10922
+#define ANTS 30000
 #define ANTS_DATA 6
 #define ANTS_DATA_TOTAL 65532
 #define ANTS_TEX_DIM 256
 #define SCALE 10
+#define ANTS_DATA_TEX_W 1000
+#define ANTS_DATA_TEX_H 60
+
+EM_JS(int, canvas_get_width, (), {
+  return canv.width;
+});
+
+EM_JS(int, canvas_get_height, (), {
+  return canv.height;
+});
 
 GLfloat antPointsVertices[ANTS * 3];
 
@@ -95,8 +106,24 @@ void loadShader(GLuint shader, const char *filePath)
 }
 
 // Vertex shader
-GLint shaderPan, shaderZoom, shaderAspect, antsTextureLoc, v_antsTextureLoc, pheremonesTextureLoc, shaderProgram, v_renderMode, f_renderMode;
+GLint shaderPan, shaderZoom, shaderAspect, antsTextureLoc, v_antsTextureLoc, pheremonesTextureLoc, shaderProgram, v_renderMode, f_renderMode, viewport, f_viewport;
 GLuint antsTextureName1, antsTextureName2, pheremonesTextureName1, pheremonesTextureName2, vbo, antsFbo1, antsFbo2, pheremonesFbo1, pheremonesFbo2;
+
+void resizeShader(EventHandler &eventHandler)
+{
+    Camera &camera = eventHandler.camera();
+    Rect &windowSize = camera.windowSize();
+
+    glUniform2fv(viewport, 1, camera.viewport());
+    glUniform2fv(f_viewport, 1, camera.viewport());
+    glBindTexture(GL_TEXTURE_2D, pheremonesTextureName1);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, windowSize.width, windowSize.height, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+
+    glBindTexture(GL_TEXTURE_2D, pheremonesTextureName2);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, windowSize.width, windowSize.height, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+
+    printf("resize shader %ix%i\n", windowSize.width, windowSize.height);
+}
 
 void updateShader(EventHandler &eventHandler)
 {
@@ -109,6 +136,8 @@ void updateShader(EventHandler &eventHandler)
 
 GLuint initShader(EventHandler &eventHandler)
 {
+    Camera &camera = eventHandler.camera();
+
     // Create and compile vertex shader
     GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
     loadShader(vertexShader, "./vertex.glsl");
@@ -130,12 +159,15 @@ GLuint initShader(EventHandler &eventHandler)
     shaderAspect = glGetUniformLocation(shaderProgram, "aspect");
     antsTextureLoc = glGetUniformLocation(shaderProgram, "antsTexture");
     v_antsTextureLoc = glGetUniformLocation(shaderProgram, "v_antsTexture");
+    viewport = glGetUniformLocation(shaderProgram, "viewport");
+    f_viewport = glGetUniformLocation(shaderProgram, "f_viewport");
     pheremonesTextureLoc = glGetUniformLocation(shaderProgram, "pheremonesTexture");
     v_renderMode = glGetUniformLocation(shaderProgram, "v_renderMode");
     f_renderMode = glGetUniformLocation(shaderProgram, "f_renderMode");
 
     glUniform1i(v_renderMode, 1);
     glUniform1i(f_renderMode, 1);
+    glUniform2fv(viewport, 1, camera.viewport());
 
     updateShader(eventHandler);
 
@@ -274,7 +306,7 @@ void initTextures(GLuint shaderProgram, EventHandler &eventHandler)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, ANTS * 2, 1, 0, GL_RGB, GL_UNSIGNED_BYTE, antsData);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, ANTS_DATA_TEX_W, ANTS_DATA_TEX_H, 0, GL_RGB, GL_UNSIGNED_BYTE, antsData);
 
     // initialize ants texture 2
     glActiveTexture(GL_TEXTURE0);
@@ -285,7 +317,7 @@ void initTextures(GLuint shaderProgram, EventHandler &eventHandler)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, ANTS * 2, 1, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, ANTS_DATA_TEX_W, ANTS_DATA_TEX_H, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
 
     // initialize ants fbo 1
     glGenFramebuffers(1, &antsFbo1);
@@ -310,6 +342,8 @@ void initTextures(GLuint shaderProgram, EventHandler &eventHandler)
     glBindFramebuffer(GL_FRAMEBUFFER, pheremonesFbo2);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, pheremonesTextureName2, 0);
     checkFramebufferStatus("pheremones FBO 2");
+
+    resizeShader(eventHandler);
 }
 
 GLfloat vertices[] =
@@ -345,10 +379,35 @@ GLfloat antsLineVertices[] =
         0.0f,
 };
 
+float d1 = 0.0;
+float d2 = 0.0;
+float d3 = 0.0;
+float d4 = 0.0;
+float d5 = 0.0;
+float d6 = 0.0;
+float d7 = 0.0;
+float d8 = 0.0;
+int iterations = 0;
+
+Timer t;
+auto const start_time = std::chrono::steady_clock::now();
+auto const wait_time = std::chrono::milliseconds{ 17 };
+auto next_time = start_time + wait_time;
+
 void redraw(EventHandler &eventHandler)
 {
+    // make sure the program runs no faster than 60fps
+    auto then = std::chrono::high_resolution_clock::now();
+    auto sleep_time = std::chrono::duration_cast<std::chrono::milliseconds> (next_time - then);
+    int ms = sleep_time.count();
+    if (ms > 0) emscripten_sleep(ms);
+
+    // start rendering
+
     Camera &camera = eventHandler.camera();
     Rect &windowSize = camera.windowSize();
+
+    d1 += t.tick();
 
     // Clear screen
     glClear(GL_COLOR_BUFFER_BIT);
@@ -361,9 +420,11 @@ void redraw(EventHandler &eventHandler)
     glActiveTexture(GL_TEXTURE0 + 1);
     glBindTexture(GL_TEXTURE_2D, pheremonesTextureName1);
     glBindFramebuffer(GL_FRAMEBUFFER, antsFbo2);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(antsLineVertices), antsLineVertices, GL_STATIC_DRAW);
-    glViewport(0, 0, ANTS * 2, 1);
-    glDrawArrays(GL_LINES, 0, 2);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    glViewport(0, 0, ANTS_DATA_TEX_W, ANTS_DATA_TEX_W);
+    glDrawArrays(GL_TRIANGLES, 0, 6);
+
+    d2 += t.tick();
 
     // swap ant textures and frame buffers
     GLuint antsTextureNameTmp = antsTextureName1;
@@ -375,6 +436,8 @@ void redraw(EventHandler &eventHandler)
     antsFbo2 = antsFboTmp;
 
     // reportAntPosition(1);
+
+    d3 += t.tick();
 
     glViewport(0, 0, windowSize.width, windowSize.height);
 
@@ -390,6 +453,8 @@ void redraw(EventHandler &eventHandler)
     glBufferData(GL_ARRAY_BUFFER, sizeof(antPointsVertices), antPointsVertices, GL_STATIC_DRAW);
     glDrawArrays(GL_POINTS, 0, ANTS);
 
+    d4 += t.tick();
+
     // swap pheremones textures and frame buffers
     GLuint pheremonesTextureNameTmp = pheremonesTextureName1;
     pheremonesTextureName1 = pheremonesTextureName2;
@@ -398,6 +463,8 @@ void redraw(EventHandler &eventHandler)
     GLuint pheremonesFboTmp = pheremonesFbo1;
     pheremonesFbo1 = pheremonesFbo2;
     pheremonesFbo2 = pheremonesFboTmp;
+
+    d5 += t.tick();
 
     // blur pheremone texture
     glUniform1i(v_renderMode, 2);
@@ -408,6 +475,8 @@ void redraw(EventHandler &eventHandler)
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
     glDrawArrays(GL_TRIANGLES, 0, 6);
 
+    d6 += t.tick();
+
     // draw result to screen
     glBindFramebuffer(GL_FRAMEBUFFER, 0); // remove the frame buffer
     glActiveTexture(GL_TEXTURE0 + 1);
@@ -417,10 +486,35 @@ void redraw(EventHandler &eventHandler)
     glUniform1i(f_renderMode, 4);
     glDrawArrays(GL_TRIANGLES, 0, 6);
 
+    d7 += t.tick();
+
     // Swap front/back framebuffers
     eventHandler.swapWindow();
-    // emscripten_sleep(200);
 
+    d8 += t.tick();
+
+    iterations++;
+
+    if (iterations == 10) {
+        // skip the first inconsistent frames
+        d1 = 0.0;
+        d2 = 0.0;
+        d3 = 0.0;
+        d4 = 0.0;
+        d5 = 0.0;
+        d6 = 0.0;
+        d7 = 0.0;
+        d8 = 0.0;
+
+        printf("Start measuring\n");
+    }
+
+    if (iterations == 300) {
+        printf("Times d1=%f, d2=%f, d3=%f, d4=%f, d5=%f, d6=%f, d7=%f, d8=%f\n", d1, d2, d3, d4, d5, d6, d7, d8);
+    }
+
+    auto elasped_time = std::chrono::duration_cast<std::chrono::milliseconds> (std::chrono::high_resolution_clock::now() - then);
+    next_time += wait_time;
 }
 
 void mainLoop(void *mainLoopArg)
@@ -432,12 +526,22 @@ void mainLoop(void *mainLoopArg)
     if (eventHandler.camera().updated())
         updateShader(eventHandler);
 
+    if (eventHandler.camera().windowResized()) {
+        resizeShader(eventHandler);
+    }
+
     redraw(eventHandler);
 }
 
 int main(int argc, char **argv)
 {
     EventHandler eventHandler("Hello Triangle");
+    t.start();
+
+    Camera &camera = eventHandler.camera();
+    int width = canvas_get_width();
+    int height = canvas_get_height();
+    camera.setWindowSize(width, height);
 
     // Initialize shader and geometry
     initAntPointVertices();

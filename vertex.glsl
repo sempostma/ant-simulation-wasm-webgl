@@ -1,12 +1,13 @@
-#define ANTS 10922
+#define ANTS 30000
 #define ANTS_DATA 6
-#define ANTS_DATA_TOTAL 65532
-#define ANTS_TEX_DIM 256
+#define ANTS_DATA_TOTAL 60000
+#define ANTS_DATA_TEX_W 1000
+#define ANTS_DATA_TEX_H 60
+
 #define SCALE 10
-#define WINDOW_WIDTH 1920.0
-#define WINDOW_HEIGHT 1080.0
 
 uniform vec2 pan;
+uniform vec2 viewport;
 uniform float zoom;
 uniform float aspect;
 uniform int v_renderMode;
@@ -21,12 +22,21 @@ varying vec2 pheremonesTexture_coord;
 const float scale = float(SCALE);
 const float scaleDiv = 1.0 / float(SCALE);
 
-const float halfStep = 1.0 / float(ANTS_DATA_TOTAL) / 2.0;
+const float halfStep = (1.0 / float(ANTS_DATA_TOTAL)) / 2.0;
+const float halfStepW = (1.0 / float(ANTS_DATA_TEX_W)) / 2.0;
+const float halfStepH = (1.0 / float(ANTS_DATA_TEX_H)) / 2.0;
 
 float lerp(float a, float b, float ratio) {
   if (ratio < 0.0) return a;
   if (ratio > 1.0) return b;
   return a + (b - a) * ratio;
+}
+
+vec3 hsl2rgb(in vec3 c)
+{
+  vec3 rgb = clamp(abs(mod(c.x*6.0+vec3(0.0,4.0,2.0),6.0)-3.0)-1.0, 0.0, 1.0);
+
+  return c.z + c.y * (rgb-0.5)*(1.0-abs(2.0*c.z-1.0));
 }
 
 void main()
@@ -43,30 +53,32 @@ void main()
   else if (v_renderMode == 3) {
     // render ants location
 
-    float antIndex = position.x;
-    float antX = mod(antIndex * 2.0, float(ANTS_TEX_DIM));
-    float antY = (antIndex * 2.0) / float(ANTS_TEX_DIM);
+    float antIndex = position.x + position.y * float(ANTS_DATA_TEX_W);
 
-    vec4 firstComp = texture2D(v_antsTexture, vec2(antX - 1.0, antY + 0.5));
-    vec4 secondComp = texture2D(v_antsTexture, vec2(antX, antY + 0.5));
+    float firstAntX = mod(antIndex * 2.0, float(ANTS_DATA_TEX_W)) / float(ANTS_DATA_TEX_W) + halfStepW;
+    float firstAntY = floor((antIndex * 2.0) / float(ANTS_DATA_TEX_W)) / float(ANTS_DATA_TEX_H) + halfStepH;
+
+    vec4 firstComp = texture2D(v_antsTexture, vec2(firstAntX, firstAntY));
+
+    float secondAntX = mod(antIndex * 2.0 + 1.0, float(ANTS_DATA_TEX_W)) / float(ANTS_DATA_TEX_W) + halfStepW;
+    float secondAntY = floor((antIndex * 2.0 + 1.0) / float(ANTS_DATA_TEX_W)) / float(ANTS_DATA_TEX_H) + halfStepH;
+
+    vec4 secondComp = texture2D(v_antsTexture, vec2(secondAntX, secondAntY));
 
     float xHO = firstComp[0];
     float xLO = firstComp[1];
     float yHO = firstComp[2];
     float yLO = secondComp[0];
 
-    float x = (xHO * 255.0 + xLO) * scaleDiv * 255.0 / WINDOW_WIDTH * 2.0;
-    float y = (yHO * 255.0 + yLO) * scaleDiv * 255.0 / WINDOW_HEIGHT * 2.0;
+    float x = (xHO * 255.0 + xLO) * scaleDiv * 255.0 / viewport.x * 2.0;
+    float y = (yHO * 255.0 + yLO) * scaleDiv * 255.0 / viewport.y * 2.0;
 
     gl_Position = vec4(x -1.0, y - 1.0, 0.0, 1.0);
     gl_PointSize = 2.0;
 
-    float ratio = antIndex / float(ANTS);
-    float r = lerp(1.0, 0.0, abs(1.0 - ratio) * 2.0);
-    float g = lerp(1.0, 0.0, abs(1.0 - (ratio + 0.55)) * 2.0);
-    float b = lerp(1.0, 0.0, abs(1.0 - (ratio + 1.0)) * 2.0);
-
-    color = vec3(r, g, b);
+    float hue = 0.5 + antIndex / float(ANTS) * 0.6;
+    if (hue > 0.8) hue = hue - (hue - 0.8) * 2.0;
+    color = hsl2rgb(vec3(hue, 1, 0.5));
     
     antsTexture_coord = position.xy;
   } else if (v_renderMode == 4) {
