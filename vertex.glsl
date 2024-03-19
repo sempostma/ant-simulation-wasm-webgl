@@ -1,3 +1,5 @@
+#pragma optimize(off)
+
 #define ANTS 30000
 #define ANTS_DATA 6
 #define ANTS_DATA_TOTAL 60000
@@ -6,6 +8,10 @@
 
 #define SCALE 10
 
+precision highp float;
+precision highp int;
+precision lowp sampler2D;
+ 
 uniform vec2 pan;
 uniform vec2 viewport;
 uniform float zoom;

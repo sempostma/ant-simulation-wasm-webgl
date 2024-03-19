@@ -18,8 +18,6 @@
 
 #define ANTS 30000
 #define ANTS_DATA 6
-#define ANTS_DATA_TOTAL 65532
-#define ANTS_TEX_DIM 256
 #define SCALE 10
 #define ANTS_DATA_TEX_W 1000
 #define ANTS_DATA_TEX_H 60
@@ -243,7 +241,6 @@ void initTextures(GLuint shaderProgram, EventHandler &eventHandler)
     int maxTextureSize;
     glGetIntegerv(GL_MAX_TEXTURE_SIZE, &maxTextureSize);
     printf("Max texture size %i\n", maxTextureSize);
-    printf("Current tex dimensions %ix%i\n", ANTS_TEX_DIM, ANTS_TEX_DIM);
 
     // ants data texture
     GLubyte antsData[ANTS * ANTS_DATA];

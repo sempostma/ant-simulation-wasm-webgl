@@ -1,3 +1,5 @@
+#pragma optimize(off)
+
 #define ANTS 30000
 #define ANTS_DATA 6
 #define ANTS_DATA_TOTAL 60000
@@ -12,6 +14,8 @@
 #define PHEREMONE_EVAPORATION_SPEED 0.004
 
 precision mediump float;
+precision mediump sampler2D;
+precision mediump int;
 
 varying vec3 color;
 varying vec2 antsTexture_coord;

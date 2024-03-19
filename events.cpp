@@ -2,9 +2,11 @@
 // Window and input event handling
 //
 #include <algorithm>
+#include <emscripten.h>
 #include <SDL.h>
 #include <SDL_opengles2.h>
-#include "events.h"
+#include <emscripten/html5.h>
+#include "events.h" 
 #include <iostream>
 #include <stdio.h>
 
@@ -33,6 +35,20 @@ void EventHandler::initWindow(const char* title)
     SDL_GL_SetSwapInterval(1);
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
+
+    #ifndef __EMSCRIPTEN__
+      windowCtx = SDL_GL_CreateContext(window);
+    #else
+      EmscriptenWebGLContextAttributes conattr;
+      emscripten_webgl_init_context_attributes(&conattr); //load default webgl1 attributes
+      conattr.antialias = false;
+      conattr.depth = false;
+      conattr.alpha = false;
+      conattr.premultipliedAlpha = false;
+      EMSCRIPTEN_WEBGL_CONTEXT_HANDLE con = emscripten_webgl_create_context("#canvas", &conattr);
+      emscripten_webgl_make_context_current(con);
+      windowCtx = SDL_GL_GetCurrentContext();
+    #endif
     windowCtx = SDL_GL_CreateContext(mpWindow);
 
     // Set clear color to black

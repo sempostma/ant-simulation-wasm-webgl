@@ -26,11 +26,12 @@
     <!-- Allow the C++ to access the canvas element --> 
     <script type='text/javascript'>
         var canv = document.getElementById('canvas');
+        var originalCanvasGetContext = canvas.getContext;
         var Module = {
             canvas: canv
         };
         document.body.onclick = function() {
-            canv.requestFullscreen().catch(console.error)
+          canv.requestFullscreen().catch(console.error)
         }
     </script>
     
