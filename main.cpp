@@ -16,11 +16,9 @@
 #include <fstream>
 #include <vector>
 
-#define ANTS 30000
 #define ANTS_DATA 6
 #define SCALE 10
-#define ANTS_DATA_TEX_W 1000
-#define ANTS_DATA_TEX_H 60
+#define ANTS_DATA_TEX_W 512 /* THIS IS THE MAXIMUM SIZE BECAUSE LOWP FLOATS IN THE SHADER WILL OVERFLOW IF THIS VALUE IS INCREASED */
 
 EM_JS(int, canvas_get_width, (), {
   return canv.width;
@@ -30,10 +28,33 @@ EM_JS(int, canvas_get_height, (), {
   return canv.height;
 });
 
-GLfloat antPointsVertices[ANTS * 3];
+int width;
+int height;
+int ants;
+int antsDataTexH;
+
+GLfloat *antPointsVertices;
+
+// should always be a multiple of ANTS_DATA_TEX_W
+int determineAmountOfAnts() {
+  unsigned long width = (unsigned long)canvas_get_width();
+  unsigned long height = (unsigned long)canvas_get_height();
+
+  unsigned long pixels = width * height;
+  // unsigned long pixelsPerWAnts = 69120;
+  unsigned long pixelsPerWAnts = 30000;
+  unsigned long thousandsOfAnts = pixels / pixelsPerWAnts;
+  int amountOfAnts = (int)thousandsOfAnts * ANTS_DATA_TEX_W;
+
+  if (amountOfAnts > 100000) {
+    return 100000;
+  }
+
+  return amountOfAnts;
+}
 
 void initAntPointVertices() {
-    for(int i = 0; i < ANTS; i++) {
+    for(int i = 0; i < ants; i++) {
         antPointsVertices[i*3] = (float)i;
         antPointsVertices[i*3+1] = 0.0f;
         antPointsVertices[i*3+2] = 0.0f;
@@ -104,7 +125,7 @@ void loadShader(GLuint shader, const char *filePath)
 }
 
 // Vertex shader
-GLint shaderPan, shaderZoom, shaderAspect, antsTextureLoc, v_antsTextureLoc, pheremonesTextureLoc, shaderProgram, v_renderMode, f_renderMode, viewport, f_viewport;
+GLint shaderPan, shaderZoom, shaderAspect, antsTextureLoc, v_antsTextureLoc, pheremonesTextureLoc, shaderProgram, v_renderMode, f_renderMode, v_viewport, f_viewport, v_ants, f_ants, v_antsDataTexH, f_antsDataTexH;
 GLuint antsTextureName1, antsTextureName2, pheremonesTextureName1, pheremonesTextureName2, vbo, antsFbo1, antsFbo2, pheremonesFbo1, pheremonesFbo2;
 
 void resizeShader(EventHandler &eventHandler)
@@ -112,7 +133,7 @@ void resizeShader(EventHandler &eventHandler)
     Camera &camera = eventHandler.camera();
     Rect &windowSize = camera.windowSize();
 
-    glUniform2fv(viewport, 1, camera.viewport());
+    glUniform2fv(v_viewport, 1, camera.viewport());
     glUniform2fv(f_viewport, 1, camera.viewport());
     glBindTexture(GL_TEXTURE_2D, pheremonesTextureName1);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, windowSize.width, windowSize.height, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
@@ -157,15 +178,24 @@ GLuint initShader(EventHandler &eventHandler)
     shaderAspect = glGetUniformLocation(shaderProgram, "aspect");
     antsTextureLoc = glGetUniformLocation(shaderProgram, "antsTexture");
     v_antsTextureLoc = glGetUniformLocation(shaderProgram, "v_antsTexture");
-    viewport = glGetUniformLocation(shaderProgram, "viewport");
+    v_viewport = glGetUniformLocation(shaderProgram, "v_viewport");
     f_viewport = glGetUniformLocation(shaderProgram, "f_viewport");
     pheremonesTextureLoc = glGetUniformLocation(shaderProgram, "pheremonesTexture");
     v_renderMode = glGetUniformLocation(shaderProgram, "v_renderMode");
     f_renderMode = glGetUniformLocation(shaderProgram, "f_renderMode");
+    v_ants = glGetUniformLocation(shaderProgram, "v_ants");
+    f_ants = glGetUniformLocation(shaderProgram, "f_ants");
+    v_antsDataTexH = glGetUniformLocation(shaderProgram, "v_antsDataTexH");
+    f_antsDataTexH = glGetUniformLocation(shaderProgram, "f_antsDataTexH");
+
+    glUniform1i(v_ants, ants);
+    glUniform1i(f_ants, ants);
+    glUniform1i(v_antsDataTexH, antsDataTexH);
+    glUniform1i(f_antsDataTexH, antsDataTexH);
 
     glUniform1i(v_renderMode, 1);
     glUniform1i(f_renderMode, 1);
-    glUniform2fv(viewport, 1, camera.viewport());
+    glUniform2fv(v_viewport, 1, camera.viewport());
 
     updateShader(eventHandler);
 
@@ -243,9 +273,10 @@ void initTextures(GLuint shaderProgram, EventHandler &eventHandler)
     printf("Max texture size %i\n", maxTextureSize);
 
     // ants data texture
-    GLubyte antsData[ANTS * ANTS_DATA];
+    // GLubyte antsData[ANTS * ANTS_DATA];
+    GLubyte *antsData = (GLubyte *)malloc(sizeof(GLubyte) * ants * ANTS_DATA);
 
-    for (int i = 0; i < ANTS; i++)
+    for (int i = 0; i < ants; i++)
     {
         auto x = convertPositionToBytes(windowSize.width * SCALE / 2);
         auto y = convertPositionToBytes(windowSize.height * SCALE / 2);
@@ -254,7 +285,7 @@ void initTextures(GLuint shaderProgram, EventHandler &eventHandler)
         antsData[i * ANTS_DATA + 1] = x.lo;        // position x, lower order
         antsData[i * ANTS_DATA + 2] = y.ho;                                                             // position y, higher order
         antsData[i * ANTS_DATA + 3] = y.lo;               // positoin y, lower order
-        antsData[i * ANTS_DATA + 4] = (GLubyte)((float)i / (float)ANTS * 255);        // angle (0 - 255 instead of 0 - 360)
+        antsData[i * ANTS_DATA + 4] = (GLubyte)((float)i / (float)ants * 255);        // angle (0 - 255 instead of 0 - 360)
         antsData[i * ANTS_DATA + 5] = 0;                                                             // not used
     }
 
@@ -303,7 +334,7 @@ void initTextures(GLuint shaderProgram, EventHandler &eventHandler)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, ANTS_DATA_TEX_W, ANTS_DATA_TEX_H, 0, GL_RGB, GL_UNSIGNED_BYTE, antsData);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, ANTS_DATA_TEX_W, antsDataTexH, 0, GL_RGB, GL_UNSIGNED_BYTE, antsData);
 
     // initialize ants texture 2
     glActiveTexture(GL_TEXTURE0);
@@ -314,7 +345,10 @@ void initTextures(GLuint shaderProgram, EventHandler &eventHandler)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, ANTS_DATA_TEX_W, ANTS_DATA_TEX_H, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, ANTS_DATA_TEX_W, antsDataTexH, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+
+
+    printf("Ants data pixel size: %ix%i\n", ANTS_DATA_TEX_W, antsDataTexH);
 
     // initialize ants fbo 1
     glGenFramebuffers(1, &antsFbo1);
@@ -397,7 +431,7 @@ void redraw(EventHandler &eventHandler)
     auto then = std::chrono::high_resolution_clock::now();
     auto sleep_time = std::chrono::duration_cast<std::chrono::milliseconds> (next_time - then);
     int ms = sleep_time.count();
-    if (ms > 0) emscripten_sleep(ms);
+    // if (ms > 0) emscripten_sleep(ms);
 
     // start rendering
 
@@ -418,7 +452,7 @@ void redraw(EventHandler &eventHandler)
     glBindTexture(GL_TEXTURE_2D, pheremonesTextureName1);
     glBindFramebuffer(GL_FRAMEBUFFER, antsFbo2);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-    glViewport(0, 0, ANTS_DATA_TEX_W, ANTS_DATA_TEX_W);
+    glViewport(0, 0, ANTS_DATA_TEX_W, antsDataTexH);
     glDrawArrays(GL_TRIANGLES, 0, 6);
 
     d2 += t.tick();
@@ -447,8 +481,8 @@ void redraw(EventHandler &eventHandler)
     glBindTexture(GL_TEXTURE_2D, antsTextureName1);
     glActiveTexture(GL_TEXTURE0 + 1);
     glBindTexture(GL_TEXTURE_2D, pheremonesTextureName1);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(antPointsVertices), antPointsVertices, GL_STATIC_DRAW);
-    glDrawArrays(GL_POINTS, 0, ANTS);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * ants * 3, antPointsVertices, GL_STATIC_DRAW);
+    glDrawArrays(GL_POINTS, 0, ants);
 
     d4 += t.tick();
 
@@ -536,9 +570,16 @@ int main(int argc, char **argv)
     t.start();
 
     Camera &camera = eventHandler.camera();
-    int width = canvas_get_width();
-    int height = canvas_get_height();
+    width = canvas_get_width();
+    height = canvas_get_height();
     camera.setWindowSize(width, height);
+
+    ants = determineAmountOfAnts();
+    // ants = ANTS;
+    antsDataTexH = ants / ANTS_DATA_TEX_W * 2;
+    antPointsVertices = (GLfloat *)malloc(sizeof(GLfloat) * ants * 3);
+
+    printf("amount of ants %i\n", ants);
 
     // Initialize shader and geometry
     initAntPointVertices();

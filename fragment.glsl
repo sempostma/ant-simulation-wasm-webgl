@@ -1,10 +1,7 @@
 #pragma optimize(off)
 
-#define ANTS 30000
 #define ANTS_DATA 6
-#define ANTS_DATA_TOTAL 60000
-#define ANTS_DATA_TEX_W 1000
-#define ANTS_DATA_TEX_H 60
+#define ANTS_DATA_TEX_W 512
 
 #define PHERMONE_RECEPTOR_DISTANCE 12.0
 #define BLUR_SPEED 0.05
@@ -13,9 +10,9 @@
 #define SCALE 10
 #define PHEREMONE_EVAPORATION_SPEED 0.004
 
-precision mediump float;
-precision mediump sampler2D;
-precision mediump int;
+precision highp float;
+precision lowp sampler2D;
+precision highp int;
 
 varying vec3 color;
 varying vec2 antsTexture_coord;
@@ -24,6 +21,8 @@ uniform vec2 f_viewport;
 uniform sampler2D antsTexture;
 uniform sampler2D pheremonesTexture;
 uniform int f_renderMode;
+uniform int f_antsDataTexH;
+uniform int f_ants;
 
 const float speed = 20.0;
 const float movementChangeChance = 0.15;
@@ -31,52 +30,77 @@ const float randomChangeDirectionChangeSpeed = 2.0;
 const float pheremoneDetectionDirectionChangeSpeed = 3.5;
 const float chanceOfGoingLeft = 0.5;
 const float RAD = 6.283185307179586;
-float maxWidth = min((f_viewport.x - 1.0) * float(SCALE), float(ANTS_COORDS_LIMIT - 1));
-float maxHeight = min((f_viewport.y - 1.0) * float(SCALE), float(ANTS_COORDS_LIMIT - 1));
 
 const float div255 = 0.0039215686274509803921568627451;
 const float ninetyDegressRadians = 1.5708;
 
-float _maxHeightHO = floor(maxHeight / 255.0);
-float _maxHeightLO = maxHeight - (_maxHeightHO * 255.0);
-
-float _maxWidthHO = floor(maxWidth / 255.0);
-float _maxWidthLO = maxWidth - (_maxWidthHO * 255.0);
-
-float maxHeightHO = _maxHeightHO * div255;
-float maxHeightLO = _maxHeightLO * div255;
-
-float maxWidthHO = _maxWidthHO * div255;
-float maxWidthLO = _maxWidthLO * div255;
-
 const float marginOfError = 0.0000001;
 const float scaleDiv = 1.0 / float(SCALE);
 
-const float halfStep = (1.0 / float(ANTS_DATA_TOTAL)) / 2.0;
-const float halfStepW = (1.0 / float(ANTS_DATA_TEX_W)) / 2.0;
-const float halfStepH = (1.0 / float(ANTS_DATA_TEX_H)) / 2.0;
+// float random(vec2 seed) {
+//   return fract(sin(dot(seed, vec2(12.9898, 78.233))) * 43758.5453);
+// }
 
-float random(vec2 seed) {
-  return fract(sin(dot(seed, vec2(12.9898, 78.233))) * 43758.5453);
+float random(vec2 seed, float t)
+{
+  float r = t * 7.924;
+  return fract(sin(seed.y+seed.x)*r+sin(seed.y-seed.x)*r*.7);
 }
 
 float max3 (vec4 v) {
   return max(max(v.x, v.y), v.z);
 }
 
+vec3 hsl2rgb(in vec3 c)
+{
+  vec3 rgb = clamp(abs(mod(c.x*6.0+vec3(0.0,4.0,2.0),6.0)-3.0)-1.0, 0.0, 1.0);
+
+  return c.z + c.y * (rgb-0.5)*(1.0-abs(2.0*c.z-1.0));
+}
+
+vec3 getColor(float antIndex, int ants) {
+  float hue = 0.5 + antIndex / float(ants) * 0.6;
+  if (hue > 0.8) hue = hue - (hue - 0.8) * 2.0;
+  return hsl2rgb(vec3(hue, 1, 0.5));
+}
+
+float getPheremoneStrength(vec4 texel, float antIndex, int ants) {
+  vec4 color = vec4(getColor(antIndex, ants), 1.0);
+  return max3(color * texel);
+}
+
 void main()
 {
+  int antsDataTotal = f_ants * 2;
+  float maxWidth = min((f_viewport.x - 1.0) * float(SCALE), float(ANTS_COORDS_LIMIT - 1));
+  float maxHeight = min((f_viewport.y - 1.0) * float(SCALE), float(ANTS_COORDS_LIMIT - 1));
+
+  float _maxHeightHO = floor(maxHeight / 255.0);
+  float _maxHeightLO = maxHeight - (_maxHeightHO * 255.0);
+
+  float _maxWidthHO = floor(maxWidth / 255.0);
+  float _maxWidthLO = maxWidth - (_maxWidthHO * 255.0);
+
+  float maxHeightHO = _maxHeightHO * div255;
+  float maxHeightLO = _maxHeightLO * div255;
+
+  float maxWidthHO = _maxWidthHO * div255;
+  float maxWidthLO = _maxWidthLO * div255;
+
+  float halfStepW = (1.0 / float(ANTS_DATA_TEX_W)) / 2.0;
+  float halfStepH = (1.0 / float(f_antsDataTexH)) / 2.0;
+
   if (f_renderMode == 1) {
     float antIndex = floor(gl_FragCoord.x) + (floor(gl_FragCoord.y) * float(ANTS_DATA_TEX_W));
 
     if (mod(antIndex, 2.0) < 1.0) {
       float firstAntX = mod(antIndex, float(ANTS_DATA_TEX_W)) / float(ANTS_DATA_TEX_W) + halfStepW;
-      float firstAntY = floor((antIndex) / float(ANTS_DATA_TEX_W)) / float(ANTS_DATA_TEX_H) + halfStepH;
+      float firstAntY = floor((antIndex) / float(ANTS_DATA_TEX_W)) / float(f_antsDataTexH) + halfStepH;
 
       vec4 firstComp = texture2D(antsTexture, vec2(firstAntX, firstAntY));
 
       float secondAntX = mod(antIndex + 1.0, float(ANTS_DATA_TEX_W)) / float(ANTS_DATA_TEX_W) + halfStepW;
-      float secondAntY = floor((antIndex + 1.0) / float(ANTS_DATA_TEX_W)) / float(ANTS_DATA_TEX_H) + halfStepH;
+      float secondAntY = floor((antIndex + 1.0) / float(ANTS_DATA_TEX_W)) / float(f_antsDataTexH) + halfStepH;
 
       vec4 secondComp = texture2D(antsTexture, vec2(secondAntX, secondAntY));
 
@@ -143,12 +167,12 @@ void main()
       return;
     } else {
       float firstAntX = mod(antIndex - 1.0, float(ANTS_DATA_TEX_W)) / float(ANTS_DATA_TEX_W) + halfStepW;
-      float firstAntY = floor((antIndex - 1.0) / float(ANTS_DATA_TEX_W)) / float(ANTS_DATA_TEX_H) + halfStepH;
+      float firstAntY = floor((antIndex - 1.0) / float(ANTS_DATA_TEX_W)) / float(f_antsDataTexH) + halfStepH;
 
       vec4 firstComp = texture2D(antsTexture, vec2(firstAntX, firstAntY));
 
       float secondAntX = mod(antIndex, float(ANTS_DATA_TEX_W)) / float(ANTS_DATA_TEX_W) + halfStepW;
-      float secondAntY = floor(antIndex / float(ANTS_DATA_TEX_W)) / float(ANTS_DATA_TEX_H) + halfStepH;
+      float secondAntY = floor(antIndex / float(ANTS_DATA_TEX_W)) / float(f_antsDataTexH) + halfStepH;
 
       vec4 secondComp = texture2D(antsTexture, vec2(secondAntX, secondAntY));
 
@@ -169,15 +193,15 @@ void main()
       // determine phermone direction
       vec2 pheremoneForwardPixelPos = vec2(cos(radians), sin(radians)) * float(PHERMONE_RECEPTOR_DISTANCE) + vec2(x, y);
       vec4 pheremoneForwardTexel = texture2D(pheremonesTexture, vec2(pheremoneForwardPixelPos.x / f_viewport.x, pheremoneForwardPixelPos.y / f_viewport.y));
-      float pheremoneForward = max3(pheremoneForwardTexel);
+      float pheremoneForward = getPheremoneStrength(pheremoneForwardTexel, antIndex, f_ants);
 
       vec2 pheremoneLeftPixelPos = vec2(cos(radians - ninetyDegressRadians), sin(radians - ninetyDegressRadians)) * float(PHERMONE_RECEPTOR_DISTANCE) + pheremoneForwardPixelPos;
       vec4 pheremoneLeftTexel = texture2D(pheremonesTexture, vec2(pheremoneLeftPixelPos.x / f_viewport.x, pheremoneLeftPixelPos.y / f_viewport.y));
-      float pheremoneLeft = max3(pheremoneLeftTexel);
+      float pheremoneLeft = getPheremoneStrength(pheremoneLeftTexel, antIndex, f_ants);
 
       vec2 pheremoneRightPixelPos = vec2(cos(radians + ninetyDegressRadians), sin(radians + ninetyDegressRadians)) * float(PHERMONE_RECEPTOR_DISTANCE) + pheremoneForwardPixelPos;
       vec4 pheremoneRightTexel = texture2D(pheremonesTexture, vec2(pheremoneRightPixelPos.x / f_viewport.x, pheremoneRightPixelPos.y / f_viewport.y));
-      float pheremoneRight = max3(pheremoneRightTexel);
+      float pheremoneRight = getPheremoneStrength(pheremoneRightTexel, antIndex, f_ants);
 
       if (pheremoneLeft > pheremoneRight && pheremoneLeft > pheremoneForward) {
         // float strengthDelta = pheremoneLeft - pheremoneForward;
@@ -189,8 +213,8 @@ void main()
         hdg += div255 * pheremoneDetectionDirectionChangeSpeed;
       }
 
-      if (random(vec2(antIndex + (2.2 + xHO) * (12.1 + yHO), (yLO + 17.9) * (xLO + 1.2))) < movementChangeChance) {
-        if (random(vec2(antIndex + (3.21 + xHO) * (3.2 + yHO), (yLO + 12.2) * (xLO + 91.2))) < chanceOfGoingLeft) {
+      if (random(vec2(antIndex + (2.2 + xHO) * (12.1 + yHO), (yLO + 17.9) * (xLO + 1.2)), hdg) < movementChangeChance) {
+        if (random(vec2(antIndex + (3.21 + xHO) * (3.2 + yHO), (yLO + 12.2) * (xLO + 91.2)), hdg) < chanceOfGoingLeft) {
           // go left
           hdg -= div255 * randomChangeDirectionChangeSpeed;
         } else {
