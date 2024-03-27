@@ -17,6 +17,8 @@ uniform int v_renderMode;
 uniform sampler2D v_antsTexture;
 uniform int v_antsDataTexH;
 uniform int v_ants;
+uniform int v_pointerDown;
+uniform vec2 v_pointerPosition;
 
 attribute vec4 position;
 

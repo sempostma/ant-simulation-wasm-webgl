@@ -4,11 +4,12 @@
 #define ANTS_DATA_TEX_W 512
 
 #define PHERMONE_RECEPTOR_DISTANCE 12.0
-#define BLUR_SPEED 0.05
+#define BLUR_SPEED 0.02
 
 #define ANTS_COORDS_LIMIT 65280
 #define SCALE 10
-#define PHEREMONE_EVAPORATION_SPEED 0.004
+#define PHEREMONE_EVAPORATION_SPEED 0.002
+#define PHEREMONE_EVAPORATION_SPEED_RELATIVE 0.0
 
 precision highp float;
 precision lowp sampler2D;
@@ -23,13 +24,17 @@ uniform sampler2D pheremonesTexture;
 uniform int f_renderMode;
 uniform int f_antsDataTexH;
 uniform int f_ants;
+uniform int f_pointerDown;
+uniform vec2 f_pointerPosition;
 
-const float speed = 20.0;
-const float movementChangeChance = 0.15;
-const float randomChangeDirectionChangeSpeed = 2.0;
-const float pheremoneDetectionDirectionChangeSpeed = 3.5;
+const float speed = 15.0;
+const float movementChangeChance = 0.3;
+const float randomChangeDirectionChangeSpeed = 3.0;
+const float pheremoneDetectionDirectionChangeSpeed = 3.1;
 const float chanceOfGoingLeft = 0.5;
 const float RAD = 6.283185307179586;
+const float pointerMagneticDistance = 400.0;
+const float pmdSquared = (pointerMagneticDistance * pointerMagneticDistance);
 
 const float div255 = 0.0039215686274509803921568627451;
 const float ninetyDegressRadians = 1.5708;
@@ -66,7 +71,15 @@ vec3 getColor(float antIndex, int ants) {
 
 float getPheremoneStrength(vec4 texel, float antIndex, int ants) {
   vec4 color = vec4(getColor(antIndex, ants), 1.0);
-  return max3(color * texel);
+  return max3(texel);
+}
+
+float angleDiff(float a1, float a2) {
+  a1 = mod(a1, RAD);
+  a2 = mod(a2, RAD);
+  float d = a2 - a1;
+  if (d > RAD * 0.5) d = d - RAD;
+  return d;
 }
 
 void main()
@@ -190,6 +203,16 @@ void main()
       float x = (xHO * 255.0 + xLO) * scaleDiv * 255.0;
       float y = (yHO * 255.0 + yLO) * scaleDiv * 255.0;
 
+      float pointerX = f_pointerPosition.x * f_viewport.x;
+      float pointerY = f_pointerPosition.y * f_viewport.y;
+
+      float pDiffX = x - pointerX;
+      float pDiffY = y - pointerY;
+      float pDiffXAbs = abs(pDiffX);
+      float pDiffYAbs = abs(pDiffY);
+      bool isInfluencedByPointer = f_pointerDown > 0 && pDiffXAbs < pointerMagneticDistance && pDiffYAbs < pointerMagneticDistance
+        && (pDiffXAbs * pDiffXAbs + pDiffYAbs * pDiffYAbs) < pmdSquared;
+
       // determine phermone direction
       vec2 pheremoneForwardPixelPos = vec2(cos(radians), sin(radians)) * float(PHERMONE_RECEPTOR_DISTANCE) + vec2(x, y);
       vec4 pheremoneForwardTexel = texture2D(pheremonesTexture, vec2(pheremoneForwardPixelPos.x / f_viewport.x, pheremoneForwardPixelPos.y / f_viewport.y));
@@ -221,9 +244,25 @@ void main()
           // go right
           hdg += div255 * randomChangeDirectionChangeSpeed;
         }
-        if (hdg > 1.0) hdg -= 1.0;
-        if (hdg < 0.0) hdg += 1.0;
       }
+
+      if (isInfluencedByPointer) {
+        float strength = (pmdSquared / (pDiffXAbs * pDiffXAbs + pDiffYAbs * pDiffYAbs + pmdSquared) - 0.5) * 2.0; // value between 0 - 1
+
+        float pAngle = atan(pDiffY, pDiffX);
+
+        if (f_pointerDown == 1) {
+          float pAngleDiff = angleDiff(pAngle, radians);
+          hdg -= pAngleDiff * 0.02 * strength;
+        }
+        if (f_pointerDown == 2) {
+          float pAngleDiff = angleDiff(radians, pAngle);
+          hdg -= pAngleDiff * 0.02 * strength;
+        }
+      }
+
+      if (hdg > 1.0) hdg -= 1.0;
+      if (hdg < 0.0) hdg += 1.0;
 
       // move accross the x axis
       xLO += xDelta;
@@ -303,7 +342,7 @@ void main()
 
     vec3 average = (texel1.xyz + texel2.xyz + texel3.xyz + texel4.xyz + texel5.xyz + texel6.xyz + texel7.xyz + texel8.xyz + texel9.xyz) / (1.0 + 8.0 * BLUR_SPEED);
 
-    gl_FragColor = vec4(average - PHEREMONE_EVAPORATION_SPEED, 1.0);
+    gl_FragColor = vec4(average * (1.0 - PHEREMONE_EVAPORATION_SPEED_RELATIVE) - PHEREMONE_EVAPORATION_SPEED, 1.0);
   } else if (f_renderMode == 3) {
     gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
     gl_FragColor = vec4(color.xyz, 1.0);

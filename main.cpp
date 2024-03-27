@@ -42,7 +42,7 @@ int determineAmountOfAnts() {
 
   unsigned long pixels = width * height;
   // unsigned long pixelsPerWAnts = 69120;
-  unsigned long pixelsPerWAnts = 30000;
+  unsigned long pixelsPerWAnts = 80000;
   unsigned long thousandsOfAnts = pixels / pixelsPerWAnts;
   int amountOfAnts = (int)thousandsOfAnts * ANTS_DATA_TEX_W;
 
@@ -125,7 +125,9 @@ void loadShader(GLuint shader, const char *filePath)
 }
 
 // Vertex shader
-GLint shaderPan, shaderZoom, shaderAspect, antsTextureLoc, v_antsTextureLoc, pheremonesTextureLoc, shaderProgram, v_renderMode, f_renderMode, v_viewport, f_viewport, v_ants, f_ants, v_antsDataTexH, f_antsDataTexH;
+GLint shaderAspect, antsTextureLoc, v_antsTextureLoc, pheremonesTextureLoc, shaderProgram, 
+    v_renderMode, f_renderMode, v_viewport, f_viewport, v_ants, f_ants, v_antsDataTexH, 
+    f_antsDataTexH, v_pointerDown, f_pointerDown, v_pointerPosition, f_pointerPosition;
 GLuint antsTextureName1, antsTextureName2, pheremonesTextureName1, pheremonesTextureName2, vbo, antsFbo1, antsFbo2, pheremonesFbo1, pheremonesFbo2;
 
 void resizeShader(EventHandler &eventHandler)
@@ -148,9 +150,29 @@ void updateShader(EventHandler &eventHandler)
 {
     Camera &camera = eventHandler.camera();
 
-    glUniform2fv(shaderPan, 1, camera.pan());
-    glUniform1f(shaderZoom, camera.zoom());
-    glUniform1f(shaderAspect, camera.aspect());
+    GLfloat aspect = camera.aspect();
+    printf("Aspect ratio changed: %.2f\n", aspect);
+
+    glUniform1f(shaderAspect, aspect);
+}
+
+void updatePointer(EventHandler &eventHandler)
+{
+    Camera &camera = eventHandler.camera();
+
+    GLfloat *pointerPosition = camera.pointerPosition();
+    GLint pointerDown = camera.pointerDown();
+
+    printf("Pointer down: %i\n", pointerDown);
+    Vec2* ppVec = (Vec2*)pointerPosition;
+    printf("Pointer position: %0.1fx%0.1f\n", ppVec->x, ppVec->y);
+
+    glUniform1i(v_pointerDown, camera.pointerDown());
+    glUniform1i(f_pointerDown, camera.pointerDown());
+
+    glUniform2fv(v_pointerPosition, 1, camera.pointerPosition());
+    glUniform2fv(f_pointerPosition, 1, camera.pointerPosition());
+
 }
 
 GLuint initShader(EventHandler &eventHandler)
@@ -173,8 +195,6 @@ GLuint initShader(EventHandler &eventHandler)
     glUseProgram(shaderProgram);
 
     // Get shader variables and initialize them
-    shaderPan = glGetUniformLocation(shaderProgram, "pan");
-    shaderZoom = glGetUniformLocation(shaderProgram, "zoom");
     shaderAspect = glGetUniformLocation(shaderProgram, "aspect");
     antsTextureLoc = glGetUniformLocation(shaderProgram, "antsTexture");
     v_antsTextureLoc = glGetUniformLocation(shaderProgram, "v_antsTexture");
@@ -187,6 +207,10 @@ GLuint initShader(EventHandler &eventHandler)
     f_ants = glGetUniformLocation(shaderProgram, "f_ants");
     v_antsDataTexH = glGetUniformLocation(shaderProgram, "v_antsDataTexH");
     f_antsDataTexH = glGetUniformLocation(shaderProgram, "f_antsDataTexH");
+    v_pointerDown = glGetUniformLocation(shaderProgram, "v_pointerDown");
+    f_pointerDown = glGetUniformLocation(shaderProgram, "f_pointerDown");
+    v_pointerPosition = glGetUniformLocation(shaderProgram, "v_pointerPosition");
+    f_pointerPosition = glGetUniformLocation(shaderProgram, "f_pointerPosition");
 
     glUniform1i(v_ants, ants);
     glUniform1i(f_ants, ants);
@@ -195,9 +219,17 @@ GLuint initShader(EventHandler &eventHandler)
 
     glUniform1i(v_renderMode, 1);
     glUniform1i(f_renderMode, 1);
+
+    glUniform1i(v_pointerDown, camera.pointerDown());
+    glUniform1i(f_pointerDown, camera.pointerDown());
+
+    glUniform2fv(v_pointerPosition, 1, camera.pointerPosition());
+    glUniform2fv(f_pointerPosition, 1, camera.pointerPosition());
+
     glUniform2fv(v_viewport, 1, camera.viewport());
 
     updateShader(eventHandler);
+    updatePointer(eventHandler);
 
     return shaderProgram;
 }
@@ -557,9 +589,11 @@ void mainLoop(void *mainLoopArg)
     if (eventHandler.camera().updated())
         updateShader(eventHandler);
 
-    if (eventHandler.camera().windowResized()) {
+    if (eventHandler.camera().pointerChanged())
+        updatePointer(eventHandler);
+
+    if (eventHandler.camera().windowResized())
         resizeShader(eventHandler);
-    }
 
     redraw(eventHandler);
 }

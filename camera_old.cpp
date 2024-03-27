@@ -13,12 +13,6 @@ bool Camera::updated()
     return updated;
 }
 
-bool Camera::pointerChanged() {
-    bool updated = mPointerUpdated;
-    mPointerUpdated = false;
-    return updated;
-}
-
 bool Camera::windowResized()
 {
     bool resized = mWindowResized;
@@ -56,10 +50,11 @@ void Camera::windowToDeviceCoords (int winX, int winY, float& deviceX, float& de
     normWindowToDeviceCoords(winX / (float)mWindowSize.width,  winY / (float)mWindowSize.height, deviceX, deviceY);
 }
 
+// Convert from device coords ([-1.0, 1.0], [-1.0,1.0]) to world coords ([-inf, inf], [-inf, inf])
 void Camera::deviceToWorldCoords (float deviceX, float deviceY, float& worldX, float& worldY)
 {
-    worldX = deviceX;
-    worldY = deviceY / mAspect;
+    worldX = deviceX / mZoom - mPan.x;
+    worldY = deviceY / mAspect / mZoom - mPan.y;
 }
 
 // Convert from window coords (x,y) in ([0, windowWidth], [windowHeight, 0]) to world coords ([-inf, inf], [-inf, inf])

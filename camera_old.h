@@ -9,20 +9,24 @@ class Camera
 public:
     Camera();
     bool updated();
-    bool pointerChanged();
     bool windowResized();
-
-    GLfloat aspect() { return mAspect; }
 
     Rect& windowSize() { return mWindowSize; }
     void setWindowSize (int width, int height);
     GLfloat* viewport() { return (GLfloat*)&mViewport; }
-    GLfloat* pointerPosition() { return (GLfloat*)&mPointerPosition; }
-    GLint pointerDown() { return mPointerDown; }
  
+    GLfloat* pan() { return (GLfloat*)&mPan; }
+    GLfloat zoom() { return mZoom; }
+    GLfloat aspect() { return mAspect; }
+ 
+    void setPan (Vec2 pan) { mPan = pan; mCameraUpdated = true; }    
+    void setPanDelta (Vec2 panDelta) { mPan.x += panDelta.x; mPan.y += panDelta.y; mCameraUpdated = true; }
+    void setZoom (GLfloat zoom) { mZoom = clamp(zoom, cZoomMin, cZoomMax); mCameraUpdated = true; }
+    void setZoomDelta (GLfloat zoomDelta) { mZoom = clamp(mZoom + zoomDelta, cZoomMin, cZoomMax); mCameraUpdated = true; }
     void setAspect (GLfloat aspect) { mAspect = aspect; mCameraUpdated = true; }
-    void setPointerPosition(GLfloat x, GLfloat y) { mPointerPosition = { x, y }; mPointerUpdated = true; }
-    void setPointerDown(int pointerDown) { mPointerDown = pointerDown; mPointerUpdated = true; }
+
+    Vec2& basePan() { return mBasePan; }
+    void setBasePan () { mBasePan = mPan; }
 
     void normWindowToDeviceCoords (float normWinX, float normWinY, float& deviceX, float& deviceY);
     void windowToDeviceCoords (int winX, int winY, float& deviceX, float& deviceY);
@@ -35,12 +39,11 @@ private:
 
     bool mCameraUpdated;
     bool mWindowResized;
-    bool mPointerUpdated;
     Rect mWindowSize;
     Vec2 mViewport;  
-    Vec2 mPointerPosition;
-    GLint mPointerDown; 
-    GLfloat mAspect; 
+    const GLfloat cZoomMin, cZoomMax;
+    Vec2 mBasePan, mPan;
+    GLfloat mZoom, mAspect; 
 };
 
 inline Camera::Camera()
@@ -48,9 +51,11 @@ inline Camera::Camera()
     , mWindowResized (false)
     , mWindowSize ({})
     , mViewport ({})
-    , mPointerPosition({-99.0f, -99.0f})
-    , mPointerDown(0)
-    , mAspect(0.0f)
+    , cZoomMin (0.1f), cZoomMax (10.0f)
+    , mBasePan ({0.0f, 0.0f})
+    , mPan ({0.0f, 0.0f})
+    , mZoom (1.0f)
+    , mAspect (1.0f)
 {
     setWindowSize(1920, 1080);
 }
