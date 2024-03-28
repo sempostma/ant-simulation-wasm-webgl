@@ -34,6 +34,7 @@ int ants;
 int antsDataTexH;
 
 GLfloat *antPointsVertices;
+GLubyte *antsData;
 
 // should always be a multiple of ANTS_DATA_TEX_W
 int determineAmountOfAnts() {
@@ -130,6 +131,12 @@ GLint shaderAspect, antsTextureLoc, v_antsTextureLoc, pheremonesTextureLoc, shad
     f_antsDataTexH, v_pointerDown, f_pointerDown, v_pointerPosition, f_pointerPosition;
 GLuint antsTextureName1, antsTextureName2, pheremonesTextureName1, pheremonesTextureName2, vbo, antsFbo1, antsFbo2, pheremonesFbo1, pheremonesFbo2;
 
+bool antsSimulationRestart = false;
+
+extern "C" void EMSCRIPTEN_KEEPALIVE restart_ant_simulation() {
+  antsSimulationRestart = true;
+}
+
 void resizeShader(EventHandler &eventHandler)
 {
     Camera &camera = eventHandler.camera();
@@ -144,6 +151,29 @@ void resizeShader(EventHandler &eventHandler)
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, windowSize.width, windowSize.height, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
 
     printf("resize shader %ix%i\n", windowSize.width, windowSize.height);
+}
+
+void _restartAntSimulation(EventHandler eventHandler) {
+  Camera &camera = eventHandler.camera();
+  Rect &windowSize = camera.windowSize();
+
+  for (int i = 0; i < ants; i++)
+  {
+      auto x = convertPositionToBytes(windowSize.width * SCALE / 2);
+      auto y = convertPositionToBytes(windowSize.height * SCALE / 2);
+
+      antsData[i * ANTS_DATA] = x.ho;                   // position x, higher order
+      antsData[i * ANTS_DATA + 1] = x.lo;        // position x, lower order
+      antsData[i * ANTS_DATA + 2] = y.ho;                                                             // position y, higher order
+      antsData[i * ANTS_DATA + 3] = y.lo;               // positoin y, lower order
+      antsData[i * ANTS_DATA + 4] = (GLubyte)((float)i / (float)ants * 255);        // angle (0 - 255 instead of 0 - 360)
+      antsData[i * ANTS_DATA + 5] = 0;                                                             // not used
+  }
+
+  glBindTexture(GL_TEXTURE_2D, antsTextureName1);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, ANTS_DATA_TEX_W, antsDataTexH, 0, GL_RGB, GL_UNSIGNED_BYTE, antsData);
+
+  resizeShader(eventHandler);
 }
 
 void updateShader(EventHandler &eventHandler)
@@ -306,7 +336,7 @@ void initTextures(GLuint shaderProgram, EventHandler &eventHandler)
 
     // ants data texture
     // GLubyte antsData[ANTS * ANTS_DATA];
-    GLubyte *antsData = (GLubyte *)malloc(sizeof(GLubyte) * ants * ANTS_DATA);
+    antsData = (GLubyte *)malloc(sizeof(GLubyte) * ants * ANTS_DATA);
 
     for (int i = 0; i < ants; i++)
     {
@@ -595,12 +625,17 @@ void mainLoop(void *mainLoopArg)
     if (eventHandler.camera().windowResized())
         resizeShader(eventHandler);
 
+    if (antsSimulationRestart) {
+      antsSimulationRestart = false;
+      _restartAntSimulation(eventHandler);
+    }
+
     redraw(eventHandler);
 }
 
 int main(int argc, char **argv)
 {
-    EventHandler eventHandler("Hello Triangle");
+    EventHandler eventHandler("Slime Mold Simulation");
     t.start();
 
     Camera &camera = eventHandler.camera();

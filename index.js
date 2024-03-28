@@ -10500,6 +10500,7 @@ var wasmExports = createWasm();
 var ___wasm_call_ctors = createExportWrapper('__wasm_call_ctors');
 var _malloc = createExportWrapper('malloc');
 var _free = createExportWrapper('free');
+var _restart_ant_simulation = Module['_restart_ant_simulation'] = createExportWrapper('restart_ant_simulation');
 var _main = Module['_main'] = createExportWrapper('__main_argc_argv');
 var _fflush = createExportWrapper('fflush');
 var _emscripten_stack_init = () => (_emscripten_stack_init = wasmExports['emscripten_stack_init'])();
