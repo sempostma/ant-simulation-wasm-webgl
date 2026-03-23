@@ -10,3 +10,5 @@ can be used as a template for improving pathfinding through Ant colonty optimiza
 This repository also sorves a great example for using Emscripten with WASM and OpenGL.
 
 ![preview](preview.jpg)
+
+Read the full article explaining everything in detail [here](linkedin.com/pulse/general-purpose-gpu-programming-without-compute-shaders-sem-postma-enzre).
