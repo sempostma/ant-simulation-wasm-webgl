@@ -1,13 +1,11 @@
 Ant Simulation
 ===
 
-This is an ant, or slime-mold simulation that can be run in the browser. 
-Under the hood it uses an older OpenGL 2.1 version and uses GLSL shaders
-to run the simulation. Not compute shaders, actual vertex fragment shaders!
-For IoT, where devices often have access to only OpenGL 2.1, this repository
-can be used as a template for improving pathfinding through Ant colonty optimization.
+This is an ant (slime mold) simulation that runs directly in the browser. Under the hood, it uses OpenGL 2.1 along with GLSL shaders to perform the simulation—not compute shaders, but traditional vertex and fragment shaders.
 
-This repository also sorves a great example for using Emscripten with WASM and OpenGL.
+For IoT environments, where devices often only support OpenGL 2.1, this repository can serve as a template for improving pathfinding using Ant Colony Optimization.
+
+This repository also serves as a great example of using Emscripten with WebAssembly (WASM) and OpenGL.
 
 ![preview](preview.jpg)
 
